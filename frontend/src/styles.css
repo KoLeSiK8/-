@@ -368,12 +368,12 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .preset-row > span { flex-basis: 100%; }
 }
 
-/* Theme system: Aéza blue is the primary interactive color in both modes. */
-.button-primary { color: #06121d; background: var(--brand); border-color: var(--brand); }
-.button-primary:hover { background: #75d5f5; border-color: #75d5f5; filter: none; }
+/* Theme system: restrained navy surfaces with a clear blue accent. */
+.button-primary { color: #fff; background: #1d5f8a; border-color: #1d5f8a; }
+.button-primary:hover { background: #174e73; border-color: #174e73; filter: none; }
 .sidebar {
-  background: linear-gradient(180deg, #4cc6f1 0%, #2e9fc9 100%);
-  border-right-color: #8cddf7;
+  background: linear-gradient(180deg, #10243a 0%, #173a59 100%);
+  border-right-color: #294d6d;
 }
 .sidebar-brand .brand-mark,
 .brand-mark {
@@ -386,51 +386,49 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .sidebar .nav-caption,
 .sidebar .sidebar-model,
 .sidebar .profile-name small {
-  color: #062238;
+  color: #d7e6f2;
 }
-.sidebar .nav-caption,
+.sidebar .nav-caption { color: #91aec5; }
 .sidebar .sidebar-model,
-.sidebar .profile-name small {
-  color: #164766;
-}
-.sidebar .nav-link { color: #0b3b58; }
+.sidebar .profile-name small { color: #9fb8cc; }
+.sidebar .nav-link { color: #c3d6e5; }
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
-  background: #ffffff40;
-  color: #031b2d;
-  border-color: #ffffff80;
+  background: #4cc6f126;
+  color: #f2f9ff;
+  border-color: #4cc6f154;
 }
 .sidebar .nav-link.active svg,
 .sidebar .status-pulse {
-  color: #182d48;
+  color: #63c9ee;
 }
 .sidebar .sidebar-model,
 .sidebar .profile-row {
-  border-color: #ffffff66;
+  border-color: #2b4b68;
 }
 .sidebar .avatar {
-  background: #182d48;
+  background: #245071;
   color: #fff;
 }
-.sidebar .logout-button { color: #182d48; }
-.sidebar .logout-button:hover { background: #ffffff40; color: #061b2c; }
+.sidebar .logout-button { color: #c9dcea; }
+.sidebar .logout-button:hover { background: #ffffff16; color: #fff; }
 .topbar { border-top: 3px solid var(--brand); }
 .risk-count {
-  background: linear-gradient(180deg, #4cc6f1 0%, #238db9 100%);
+  background: linear-gradient(180deg, #173653 0%, #24577b 100%);
 }
-.risk-count > div span { color: #062b40; }
-.risk-mark { color: #16506d; }
-.metric-card::before,
-.metric-card.ink::before { background: var(--brand); }
+.risk-count > div span { color: #c7dbea; }
+.risk-mark { color: #9fb8cc; }
+.metric-card::before { background: #3b91bd; }
+.metric-card.ink::before { background: #274f70; }
 .model-version,
 .as-of-chip,
-.button-secondary { color: #062238; background: #bfeefd; border-color: #78d5f3; }
-.text-link { color: #16739b; }
+.button-secondary { color: #174c6d; background: #e5f4fb; border-color: #b9ddec; }
+.text-link { color: #1d6f9d; }
 .login-brand-panel {
-  background: linear-gradient(155deg, #4cc6f1 0%, #218db8 72%);
+  background: linear-gradient(155deg, #10243a 0%, #1d5f8a 72%);
 }
 .login-brand-copy .eyebrow,
-.brand-foot { color: #07334b; }
+.brand-foot { color: #a9c8dc; }
 .login-brand-copy h1 em { color: #fff; }
 .brand-rule { background: #fff; }
 .login-form-panel { border-top: 3px solid var(--brand); }
@@ -512,6 +510,7 @@ html[data-theme="dark"] .customer-table tbody tr:hover { background: #1a3449; }
 html[data-theme="dark"] .search-box,
 html[data-theme="dark"] .select-wrap select,
 html[data-theme="dark"] .number-control input,
+html[data-theme="dark"] .feature-slider-row input[type="number"],
 html[data-theme="dark"] .settings-panel select,
 html[data-theme="dark"] .date-input,
 html[data-theme="dark"] .login-form input {
