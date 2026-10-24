@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Bell, ChevronLeft, ChevronRight, CircleHelp, CloudUpload, Database, FileJson2, Gauge, LogOut, Search, Settings2, ShieldAlert, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Bell, ChevronLeft, ChevronRight, CircleHelp, CloudUpload, Database, FileJson2, Gauge, LogOut, Moon, Search, Settings2, ShieldAlert, ShieldCheck, Sun, Users, X } from "lucide-react";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError, api, CustomerDetail, CustomerPage, FeatureDescription, formatDate, formatEur, Level, levelLabels, ModelSettings, ModelSettingsResponse, Summary, Timeline } from "./api";
@@ -25,6 +25,11 @@ const passwordLabel = "\u041f\u0430\u0440\u043e\u043b\u044c";
 const dataDescription = "\u0421\u043d\u0430\u043f\u0448\u043e\u0442 \u0431\u0443\u0434\u0435\u0442 \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d \u0438 \u043f\u0435\u0440\u0435\u0441\u0447\u0438\u0442\u0430\u043d \u0434\u043e \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u044f.";
 const atomicDataHint = "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0438 \u043f\u0435\u0440\u0435\u0441\u0447\u0451\u0442 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u044e\u0442\u0441\u044f \u043e\u0434\u043d\u043e\u0439 \u0442\u0440\u0430\u043d\u0437\u0430\u043a\u0446\u0438\u0435\u0439.";
 const sortOptions = [["id", "ID"], ["email", "Email"], ["balance", t.balance], ["total_replenished", "\u041f\u043e\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u044f"], ["score", "Score"], ["expected_loss", t.expectedLoss]] as const;
+type Theme = "light" | "dark";
+
+function readTheme(): Theme {
+  return window.localStorage.getItem("churn-theme") === "dark" ? "dark" : "light";
+}
 
 function useLiveUpdates(enabled: boolean) {
   const client = useQueryClient();
@@ -43,20 +48,30 @@ function useLiveUpdates(enabled: boolean) {
 export default function AppFixed() {
   const client = useQueryClient();
   const [expired, setExpired] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => readTheme());
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ login: string }>("/api/v1/auth/me"), retry: false });
   const live = useLiveUpdates(Boolean(me.data) && !expired);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("churn-theme", theme);
+  }, [theme]);
   useEffect(() => { const expire = () => setExpired(true); window.addEventListener("auth-expired", expire); return () => window.removeEventListener("auth-expired", expire); }, []);
   async function onLogin() { setExpired(false); await me.refetch(); }
   async function logout() { try { await api<void>("/api/v1/auth/logout", { method: "POST" }); } finally { setExpired(true); client.clear(); } }
   if (me.isLoading) return <div className="boot-screen"><span className="brand-mark">CR</span></div>;
-  if (!me.data || expired) return <Login onLogin={onLogin} />;
-  return <div className="app-frame"><Sidebar login={me.data.login} logout={logout} /><main className="main-column"><Topbar live={live} login={me.data.login} /><div className="page-wrap"><Routes><Route path="/" element={<Dashboard />} /><Route path="/customers" element={<Customers />} /><Route path="/model" element={<Model />} /><Route path="/data" element={<Data />} /><Route path="*" element={<Dashboard />} /></Routes></div></main></div>;
+  if (!me.data || expired) return <Login onLogin={onLogin} theme={theme} toggleTheme={() => setTheme(theme === "light" ? "dark" : "light")} />;
+  return <div className="app-frame"><Sidebar login={me.data.login} logout={logout} /><main className="main-column"><Topbar live={live} login={me.data.login} theme={theme} toggleTheme={() => setTheme(theme === "light" ? "dark" : "light")} /><div className="page-wrap"><Routes><Route path="/" element={<Dashboard />} /><Route path="/customers" element={<Customers />} /><Route path="/model" element={<Model />} /><Route path="/data" element={<Data />} /><Route path="*" element={<Dashboard />} /></Routes></div></main></div>;
 }
 
-function Login({ onLogin }: { onLogin: () => Promise<void> }) {
+function ThemeToggle({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void }) {
+  const dark = theme === "dark";
+  return <button className="icon-button theme-toggle" type="button" onClick={toggleTheme} title={dark ? "Светлая тема" : "Тёмная тема"} aria-label={dark ? "Включить светлую тему" : "Включить тёмную тему"}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>;
+}
+
+function Login({ onLogin, theme, toggleTheme }: { onLogin: () => Promise<void>; theme: Theme; toggleTheme: () => void }) {
   const [login, setLogin] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); setError(""); try { await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ login, password }) }); await onLogin(); } catch (reason) { setError(reason instanceof ApiError && reason.status === 401 ? t.loginError : t.loginFailed); } finally { setBusy(false); } }
-  return <main className="login-screen"><section className="login-brand-panel"><div className="brand-lockup"><span className="brand-mark">CR</span><span>CHURN / INSIGHT</span></div><div className="login-brand-copy"><p className="eyebrow">{t.riskSystem}</p><h1>{t.riskVisible}<br /><em>{t.visible}</em></h1><div className="brand-rule" /><p>{t.retention}</p></div><div className="login-ornament" aria-hidden="true"><span /><span /><span /><span /><span /></div><span className="brand-foot">CHURN RISK ANALYZER · 01</span></section><section className="login-form-panel"><div className="login-form-wrap"><p className="eyebrow">{t.workspace}</p><h2>{t.loginTitle}</h2><p className="muted">{t.loginHint}</p><form onSubmit={submit} className="login-form"><label>{loginLabel}<input autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} required /></label><label>{passwordLabel}<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>{error && <p className="form-error">{error}</p>}<button className="button button-primary login-submit" disabled={busy}>{busy ? t.busy : t.continue}<ChevronRight size={17} /></button></form><p className="login-safe"><ShieldCheck size={15} />{t.protected}</p></div></section></main>;
+  return <main className="login-screen"><section className="login-brand-panel"><div className="brand-lockup"><span className="brand-mark">CR</span><span>CHURN / INSIGHT</span></div><div className="login-brand-copy"><p className="eyebrow">{t.riskSystem}</p><h1>{t.riskVisible}<br /><em>{t.visible}</em></h1><div className="brand-rule" /><p>{t.retention}</p></div><div className="login-ornament" aria-hidden="true"><span /><span /><span /><span /><span /></div><span className="brand-foot">CHURN RISK ANALYZER · 01</span></section><section className="login-form-panel"><div className="login-form-wrap"><div className="login-theme-row"><p className="eyebrow">{t.workspace}</p><ThemeToggle theme={theme} toggleTheme={toggleTheme} /></div><h2>{t.loginTitle}</h2><p className="muted">{t.loginHint}</p><form onSubmit={submit} className="login-form"><label>{loginLabel}<input autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} required /></label><label>{passwordLabel}<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>{error && <p className="form-error">{error}</p>}<button className="button button-primary login-submit" disabled={busy}>{busy ? t.busy : t.continue}<ChevronRight size={17} /></button></form><p className="login-safe"><ShieldCheck size={15} />{t.protected}</p></div></section></main>;
 }
 
 function Sidebar({ login, logout }: { login: string; logout: () => void }) {
@@ -64,9 +79,9 @@ function Sidebar({ login, logout }: { login: string; logout: () => void }) {
   return <aside className="sidebar"><NavLink to="/" className="brand-lockup sidebar-brand"><span className="brand-mark">CR</span><span>CHURN<br />INSIGHT</span></NavLink><div className="nav-caption">{t.analytics}</div><nav className="side-nav">{items.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}><Icon size={18} /><span>{label}</span></NavLink>)}</nav><div className="sidebar-bottom"><div className="sidebar-model"><span className="status-pulse" /><span>{t.modelActive}</span><b>v1</b></div><div className="profile-row"><span className="avatar">{login[0]?.toUpperCase()}</span><span className="profile-name">{login}<small>{t.admin}</small></span><button className="icon-button logout-button" title={t.logout} onClick={logout}><LogOut size={16} /></button></div></div></aside>;
 }
 
-function Topbar({ live, login }: { live: boolean; login: string }) {
+function Topbar({ live, login, theme, toggleTheme }: { live: boolean; login: string; theme: Theme; toggleTheme: () => void }) {
   const location = useLocation(); const titles: Record<string, string> = { "/": t.overview, "/customers": t.customers, "/model": t.settings, "/data": t.data };
-  return <header className="topbar"><div className="breadcrumb"><span>{t.analytics}</span><span className="crumb-divider">/</span><strong>{titles[location.pathname] ?? t.overview}</strong></div><div className="topbar-right"><span className={`live-status ${live ? "online" : "offline"}`}><span />{live ? "Live" : t.live}</span><span className="topbar-divider" /><span className="topbar-user">{login}</span><button className="icon-button notification-button" title={t.warnings}><Bell size={17} /></button></div></header>;
+  return <header className="topbar"><div className="breadcrumb"><span>{t.analytics}</span><span className="crumb-divider">/</span><strong>{titles[location.pathname] ?? t.overview}</strong></div><div className="topbar-right"><span className={`live-status ${live ? "online" : "offline"}`}><span />{live ? "Live" : t.live}</span><span className="topbar-divider" /><span className="topbar-user">{login}</span><ThemeToggle theme={theme} toggleTheme={toggleTheme} /><button className="icon-button notification-button" title={t.warnings}><Bell size={17} /></button></div></header>;
 }
 
 function PageTitle({ eyebrow, title, detail, action }: { eyebrow: string; title: string; detail?: string; action?: React.ReactNode }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1>{detail && <p className="page-detail">{detail}</p>}</div>{action}</div>; }
