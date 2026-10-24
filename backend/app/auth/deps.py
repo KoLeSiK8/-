@@ -2,10 +2,14 @@ from typing import Any
 
 from fastapi import HTTPException, Request, status
 
+from .security import read_session_id
+
+SESSION_COOKIE = "session"
+
 
 def require_user(request: Request) -> dict[str, Any]:
-    session_id = request.cookies.get("session")
-    if not session_id:
+    session_id = read_session_id(request.cookies.get(SESSION_COOKIE))
+    if session_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     connection = request.app.state.engine.raw_connection()

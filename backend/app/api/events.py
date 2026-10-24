@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from ..auth.deps import require_user
-from ..events import EventBus, RecomputedEvent
+from ..events import EventBus
 
 router = APIRouter(dependencies=[Depends(require_user)])
 
 
-@router.get("")
+@router.get("", summary="SSE-поток: событие recomputed после каждого пересчёта")
 async def stream_events(request: Request) -> StreamingResponse:
     bus: EventBus = request.app.state.event_bus
     queue = bus.subscribe()

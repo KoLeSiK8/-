@@ -17,7 +17,7 @@ SORT_COLUMNS = {
 LEVELS = {"low", "medium", "high", "churned", "no_data"}
 
 
-@router.get("")
+@router.get("", summary="Список клиентов с оценкой риска")
 def list_customers(
     request: Request,
     level: list[str] | None = Query(default=None),
@@ -38,8 +38,12 @@ def list_customers(
         filters.append("customer_scores.level = ANY(:levels)")
         params["levels"] = level
     if q:
-        filters.append("(accounts.id::text ILIKE :query OR accounts.email ILIKE :query)")
-        params["query"] = f"%{q}%"
+        filters.append(
+            "(accounts.id::text ILIKE :query ESCAPE '\\' "
+            "OR accounts.email ILIKE :query ESCAPE '\\')"
+        )
+        escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        params["query"] = f"%{escaped}%"
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
     direction = "ASC" if order == "asc" else "DESC"
     sort_column = SORT_COLUMNS[sort_by]
@@ -89,7 +93,7 @@ def list_customers(
     return {"items": items, "total": total, "page": page, "size": size}
 
 
-@router.get("/{customer_id}")
+@router.get("/{customer_id}", summary="Карточка клиента")
 def get_customer(customer_id: int, request: Request) -> dict:
     with request.app.state.engine.connect() as connection:
         customer = connection.execute(

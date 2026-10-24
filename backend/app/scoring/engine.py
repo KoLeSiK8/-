@@ -4,7 +4,7 @@ from statistics import mean
 from typing import Any
 
 from ..ingestion.quality import snapshot_as_of
-from ..ingestion.schemas import AccountInput, ServiceInput, SnapshotInput
+from ..ingestion.schemas import ServiceInput, SnapshotInput
 from .context import LIVE_STATUSES, ScoringContext
 from .registry import FEATURES, Feature, load_features
 from .settings import ScoringSettings

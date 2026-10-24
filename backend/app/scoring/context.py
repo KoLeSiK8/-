@@ -14,6 +14,16 @@ PERIOD_DAYS = {
 LIVE_STATUSES = {"active", "suspended", "prolong_wait"}
 
 
+def format_number(value: float, digits: int = 1) -> str:
+    """Format a number the Russian way: comma as decimal separator, non-breaking spaces between thousands."""
+    text = f"{value:,.{digits}f}"
+    return text.replace(",", "\u00a0").replace(".", ",")
+
+
+def format_eur(cents: int) -> str:
+    return f"{format_number(cents / 100, 2)}\u00a0€"
+
+
 @dataclass(frozen=True)
 class ScoringContext:
     account: AccountInput

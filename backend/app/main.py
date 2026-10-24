@@ -12,14 +12,13 @@ from .api.model import router as model_router
 from .api.events import router as events_router
 from .api.metrics import router as metrics_router
 from .auth.router import router as auth_router
-from .config import settings
+from .config import dataset_path, settings
 from .auth.security import hash_password
 from .ingestion.loader import load_snapshot
 from .ingestion.schemas import SnapshotInput
 from .scoring.recompute import recompute
 from .events import EventBus
 import json
-from pathlib import Path
 
 
 def create_app(database_engine: Engine | None = None) -> FastAPI:
@@ -34,7 +33,7 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
                 has_accounts = connection.exec_driver_sql(
                     "SELECT EXISTS (SELECT 1 FROM public.accounts)"
                 ).scalar_one()
-            seed_path = Path("data") / f"{settings.seed_dataset}.json"
+            seed_path = dataset_path(settings.seed_dataset)
             if not has_accounts and seed_path.is_file():
                 payload = json.loads(seed_path.read_text(encoding="utf-8"))
                 load_snapshot(app_engine, SnapshotInput.model_validate(payload))
@@ -59,7 +58,7 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
     application.include_router(metrics_router, tags=["metrics"])
     application.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 
-    @application.get("/healthz", tags=["health"])
+    @application.get("/healthz", tags=["health"], summary="Проверка доступности")
     def health_check() -> dict[str, str]:
         return {"status": "ok"}
 

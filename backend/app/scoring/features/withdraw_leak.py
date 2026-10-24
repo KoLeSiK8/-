@@ -1,4 +1,4 @@
-from ..context import ScoringContext
+from ..context import ScoringContext, format_eur
 from ..registry import Feature, FeatureResult, register_feature
 
 
@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class WithdrawLeak(Feature):
     key = "withdraw_leak"
     title = "Доля средств на вывод"
+    description = (
+        "withdrawBalance / balance: какую часть баланса клиент может вывести. "
+        "Большая доля говорит о том, что деньги могут уйти с платформы."
+    )
     scope = "account"
     default_weight = 5
 
@@ -16,5 +20,6 @@ class WithdrawLeak(Feature):
         return FeatureResult(
             True,
             value,
-            f"На вывод доступно {ctx.account.withdraw_balance} из {ctx.account.balance} единиц баланса.",
+            f"На вывод доступно {format_eur(ctx.account.withdraw_balance)} из "
+            f"{format_eur(ctx.account.balance)} баланса.",
         )

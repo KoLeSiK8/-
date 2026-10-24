@@ -1,67 +1,88 @@
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from ..scoring.engine import compute_scoring
-from ..scoring.money import churn_probability, service_value_cents
-from ..scoring.recompute import _load_snapshot, load_settings
+from ..scoring.money import churn_probability
+from ..scoring.recompute import load_settings
+
+FORECAST_DAYS = 30
 
 
 def build_timeline(engine: Engine) -> dict:
-    snapshot = _load_snapshot(engine)
+    """Daily churn chart in one unit: number of services.
+
+    * observed  - services that moved to deleted/blocked between snapshots;
+    * estimated - deleted services, dated expiresAt + 5 days (the platform rule);
+    * forecast  - expected number of services lost on each day of the next 30 days,
+                  i.e. the sum of P(churn | service score) by expiresAt.
+    Scores and as_of come from the stored recompute result, not a fresh calculation.
+    """
     settings, _ = load_settings(engine)
-    scoring = compute_scoring(snapshot, settings)
-    scoring_by_service = {item.service_id: item for item in scoring.services}
-    services_by_id = {service.id: service for service in snapshot.services}
-    observed: dict[date, int] = defaultdict(int)
-    estimated: dict[date, int] = defaultdict(int)
+    observed: dict[date, float] = defaultdict(float)
+    estimated: dict[date, float] = defaultdict(float)
     forecast: dict[date, float] = defaultdict(float)
 
     with engine.connect() as connection:
+        as_of = connection.execute(
+            text("SELECT as_of FROM app.score_summary WHERE id = 1")
+        ).scalar()
         events = connection.execute(
             text(
                 """
-                SELECT service_id, changed_at FROM app.service_status_events
+                SELECT DISTINCT service_id, changed_at::date AS day
+                FROM app.service_status_events
                 WHERE new_status IN ('deleted', 'blocked')
+                  AND old_status NOT IN ('deleted', 'blocked')
                 """
             )
         ).all()
-    for service_id, changed_at in events:
-        service = services_by_id.get(service_id)
-        if service:
-            observed[changed_at.date()] += service_value_cents(service, settings)
-
-    for service in snapshot.services:
-        if service.status == "deleted":
-            estimated[(service.expires_at + timedelta(days=5)).date()] += service_value_cents(
-                service, settings
+        services = connection.execute(
+            text(
+                """
+                SELECT services.status, services."expiresAt" AS expires_at, scores.score
+                FROM public.services AS services
+                LEFT JOIN app.service_scores AS scores ON scores.service_id = services.id
+                """
             )
-        if service.status not in {"active", "suspended", "prolong_wait"}:
+        ).mappings().all()
+
+    as_of = as_of or datetime.now(timezone.utc)
+    for _, day in events:
+        observed[day] += 1
+
+    for service in services:
+        if service["status"] == "deleted":
+            estimated[(service["expires_at"] + timedelta(days=5)).date()] += 1
             continue
-        days_left = (service.expires_at - scoring.as_of).total_seconds() / 86400
-        if 0 <= days_left <= 30:
-            service_score = scoring_by_service.get(service.id)
-            if service_score and service_score.score is not None:
-                forecast[service.expires_at.date()] += churn_probability(
-                    service_score.score, settings
-                )
+        if service["status"] not in {"active", "suspended", "prolong_wait"}:
+            continue
+        if service["score"] is None:
+            continue
+        days_left = (service["expires_at"] - as_of).total_seconds() / 86400
+        if 0 <= days_left <= FORECAST_DAYS:
+            forecast[service["expires_at"].date()] += churn_probability(
+                service["score"], settings
+            )
 
-    as_of_date = scoring.as_of.date()
-    series = [
-        _series("observed", observed),
-        _series("estimated", estimated),
-        _series("forecast", forecast),
-    ]
-    return {"asOf": scoring.as_of, "asOfDate": as_of_date, "series": series}
+    return {
+        "asOf": as_of,
+        "asOfDate": as_of.date(),
+        "unit": "services",
+        "series": [
+            _series("observed", observed),
+            _series("estimated", estimated),
+            _series("forecast", forecast),
+        ],
+    }
 
 
-def _series(series_type: str, points: dict[date, int | float]) -> dict:
+def _series(series_type: str, points: dict[date, float]) -> dict:
     return {
         "type": series_type,
         "points": [
-            {"date": day, "value": value}
+            {"date": day, "value": round(value, 4)}
             for day, value in sorted(points.items())
         ],
     }

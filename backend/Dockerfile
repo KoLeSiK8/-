@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY backend/tests ./backend/tests
 COPY backend/migrations ./migrations
-COPY test_data/data.json ./test_data/data.json
 COPY data/official.json ./data/official.json
 COPY data/demo.json ./data/demo.json
 

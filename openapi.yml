@@ -3,391 +3,617 @@ info:
   title: Анализатор рисков оттока
   description: API системы анализа риска оттока клиентов.
   version: 0.1.0
-servers:
-  - url: /
-security:
-  - sessionCookie: []
 paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      summary: Проверка доступности приложения
-      security: []
-      tags: [health]
-      responses:
-        "200":
-          description: Приложение доступно
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
-  /api/v1/auth/login:
-    post:
-      operationId: login
-      summary: Вход пользователя
-      security: []
-      tags: [auth]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-      responses:
-        "200":
-          description: Успешный вход; устанавливается cookie-сессия
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/auth/me:
-    get:
-      operationId: getCurrentUser
-      summary: Текущий пользователь
-      tags: [auth]
-      responses:
-        "200":
-          description: Пользователь авторизован
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/auth/logout:
-    post:
-      operationId: logout
-      summary: Выход пользователя
-      tags: [auth]
-      responses:
-        "204":
-          description: Сессия удалена
-  /api/v1/customers:
-    get:
-      operationId: listCustomers
-      summary: Список клиентов с фильтрацией и сортировкой
-      tags: [customers]
-      parameters:
-        - in: query
-          name: level
-          description: Уровень риска; параметр можно передавать несколько раз
-          schema:
-            type: array
-            items:
-              $ref: "#/components/schemas/CustomerLevel"
-          style: form
-          explode: true
-        - in: query
-          name: q
-          description: Поиск по ID или части email
-          schema:
-            type: string
-        - in: query
-          name: sort_by
-          schema:
-            type: string
-            enum: [id, email, balance, total_replenished, score, expected_loss]
-        - in: query
-          name: order
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
-        - in: query
-          name: page
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - in: query
-          name: size
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-      responses:
-        "200":
-          description: Страница клиентов
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CustomerPage"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/customers/{customerId}:
-    get:
-      operationId: getCustomer
-      summary: Карточка клиента
-      tags: [customers]
-      parameters:
-        - $ref: "#/components/parameters/CustomerId"
-      responses:
-        "200":
-          description: Данные, оценка, причины и предупреждения клиента
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CustomerDetail"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          description: Клиент не найден
-  /api/v1/analytics/summary:
-    get:
-      operationId: getAnalyticsSummary
-      summary: Сводные метрики панели
-      tags: [analytics]
-      responses:
-        "200":
-          description: Текущая сводка модели
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnalyticsSummary"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/analytics/churn-timeline:
-    get:
-      operationId: getChurnTimeline
-      summary: Фактическая, оценочная и прогнозная динамика оттока
-      tags: [analytics]
-      responses:
-        "200":
-          description: Временной ряд оттока
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ChurnTimeline"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/model/settings:
-    get:
-      operationId: getModelSettings
-      summary: Настройки модели и описание признаков
-      tags: [model]
-      responses:
-        "200":
-          description: Текущие настройки модели
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ModelSettings"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-    patch:
-      operationId: patchModelSettings
-      summary: Частичное обновление настроек модели
-      tags: [model]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: Сохранённые настройки и новая версия модели
-        "422":
-          description: Настройки не прошли проверку диапазонов
-        "401":
-          $ref: "#/components/responses/Unauthorized"
   /api/v1/source/snapshot:
     put:
-      operationId: putSourceSnapshot
-      summary: Атомарная загрузка снимка исходных данных
-      tags: [source]
+      tags:
+      - source
+      summary: Заменить снимок данных и пересчитать оценки
+      operationId: put_snapshot_api_v1_source_snapshot_put
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SourceSnapshot"
+              $ref: '#/components/schemas/SnapshotInput'
+        required: true
       responses:
-        "200":
-          description: Снимок загружен и обработан
-        "422":
-          description: Данные не прошли проверку; состояние базы не изменено
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: integer
+                type: object
+                title: Response Put Snapshot Api V1 Source Snapshot Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/source/presets/{name}:
+    post:
+      tags:
+      - source
+      summary: 'Загрузить встроенный набор: official или demo'
+      description: Load one of the bundled datasets (data/official.json or data/demo.json).
+      operationId: load_preset_api_v1_source_presets__name__post
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          enum:
+          - official
+          - demo
+          type: string
+          title: Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                title: Response Load Preset Api V1 Source Presets  Name  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/customers:
+    get:
+      tags:
+      - customers
+      summary: Список клиентов с оценкой риска
+      operationId: list_customers_api_v1_customers_get
+      parameters:
+      - name: level
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: array
+            items:
+              type: string
+          - type: 'null'
+          title: Level
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - id
+          - email
+          - balance
+          - total_replenished
+          - score
+          - expected_loss
+          type: string
+          default: id
+          title: Sort By
+      - name: order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: asc
+          title: Order
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Customers Api V1 Customers Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/customers/{customer_id}:
+    get:
+      tags:
+      - customers
+      summary: Карточка клиента
+      operationId: get_customer_api_v1_customers__customer_id__get
+      parameters:
+      - name: customer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Customer Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Customer Api V1 Customers  Customer Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/analytics/summary:
+    get:
+      tags:
+      - analytics
+      summary: Сводка для дашборда (те же числа, что в /metrics)
+      operationId: get_summary_api_v1_analytics_summary_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Summary Api V1 Analytics Summary Get
+  /api/v1/analytics/churn-timeline:
+    get:
+      tags:
+      - analytics
+      summary: 'График оттока: факт, оценка, прогноз (в услугах)'
+      operationId: get_churn_timeline_api_v1_analytics_churn_timeline_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Churn Timeline Api V1 Analytics Churn Timeline Get
+  /api/v1/model/settings:
+    get:
+      tags:
+      - model
+      summary: Настройки модели, значения по умолчанию и описания признаков
+      operationId: get_settings_api_v1_model_settings_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Settings Api V1 Model Settings Get
+    patch:
+      tags:
+      - model
+      summary: Частично изменить настройки и пересчитать оценки
+      operationId: patch_settings_api_v1_model_settings_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Payload
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Patch Settings Api V1 Model Settings Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/events:
     get:
-      operationId: subscribeToEvents
-      summary: События пересчёта модели (SSE)
-      tags: [events]
+      tags:
+      - events
+      summary: 'SSE-поток: событие recomputed после каждого пересчёта'
+      operationId: stream_events_api_v1_events_get
       responses:
-        "200":
-          description: Поток событий Server-Sent Events
+        '200':
+          description: Successful Response
           content:
-            text/event-stream:
-              schema:
-                type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /api/v1/docs:
-    get:
-      operationId: swaggerUi
-      summary: Swagger UI
-      security: []
-      tags: [documentation]
-      responses:
-        "200":
-          description: Интерактивная документация API
-  /api/v1/openapi.json:
-    get:
-      operationId: openApiSchema
-      summary: OpenAPI-схема приложения
-      security: []
-      tags: [documentation]
-      responses:
-        "200":
-          description: OpenAPI JSON
+            application/json:
+              schema: {}
   /metrics:
     get:
+      tags:
+      - metrics
+      summary: Метрики Prometheus (сессия или Bearer METRICS_TOKEN)
       operationId: getMetrics
-      summary: Метрики Prometheus
-      security:
-        - sessionCookie: []
-        - metricsBearer: []
-      tags: [metrics]
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Метрики в формате Prometheus
+        '200':
+          description: Successful Response
           content:
-            text/plain:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
               schema:
-                type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                $ref: '#/components/schemas/HTTPValidationError'
   /metics:
     get:
+      tags:
+      - metrics
+      summary: Алиас /metrics (написание из ТЗ)
       operationId: getMetricsTypoAlias
-      summary: Алиас метрик Prometheus
-      security:
-        - sessionCookie: []
-        - metricsBearer: []
-      tags: [metrics]
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
       responses:
-        "200":
-          description: Метрики в формате Prometheus
+        '200':
+          description: Successful Response
           content:
-            text/plain:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
               schema:
-                type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - auth
+      summary: 'Вход: ставит cookie сессии'
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Login Api V1 Auth Login Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Текущий пользователь
+      operationId: get_current_user_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Get Current User Api V1 Auth Me Get
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Выход
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '204':
+          description: Successful Response
+  /healthz:
+    get:
+      tags:
+      - health
+      summary: Проверка доступности
+      operationId: health_check_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Check Healthz Get
 components:
-  securitySchemes:
-    sessionCookie:
-      type: apiKey
-      in: cookie
-      name: session
-    metricsBearer:
-      type: http
-      scheme: bearer
-  parameters:
-    CustomerId:
-      in: path
-      name: customerId
-      required: true
-      schema:
-        type: integer
-  responses:
-    Unauthorized:
-      description: Требуется авторизация
   schemas:
-    Health:
-      type: object
+    AccountInput:
       properties:
-        status:
+        id:
+          type: integer
+          minimum: 1.0
+          title: Id
+        email:
           type: string
-          const: ok
-      required: [status]
-    LoginRequest:
+          minLength: 1
+          title: Email
+        balance:
+          type: integer
+          minimum: 0.0
+          title: Balance
+        withdrawBalance:
+          type: integer
+          minimum: 0.0
+          title: Withdrawbalance
+        totalReplenished:
+          type: integer
+          minimum: 0.0
+          title: Totalreplenished
+        bonusBalance:
+          type: integer
+          minimum: 0.0
+          title: Bonusbalance
+        bonusState:
+          type: string
+          enum:
+          - locked
+          - unlocked
+          title: Bonusstate
+      additionalProperties: false
       type: object
+      required:
+      - id
+      - email
+      - balance
+      - withdrawBalance
+      - totalReplenished
+      - bonusBalance
+      - bonusState
+      title: AccountInput
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    LoginInput:
       properties:
         login:
           type: string
+          minLength: 1
+          title: Login
         password:
           type: string
-      required: [login, password]
-    User:
+          minLength: 1
+          title: Password
+      additionalProperties: false
       type: object
+      required:
+      - login
+      - password
+      title: LoginInput
+    ServiceInput:
       properties:
-        login:
+        id:
+          type: integer
+          minimum: 1.0
+          title: Id
+        name:
           type: string
-      required: [login]
-    CustomerLevel:
-      type: string
-      enum: [low, medium, high, churned, no_data]
-    CustomerPage:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
-        total:
+          pattern: ^[A-Za-z0-9-]+$
+          title: Name
+        ownerId:
           type: integer
-        page:
-          type: integer
-        size:
-          type: integer
-      required: [items, total, page, size]
-    CustomerDetail:
-      type: object
-      additionalProperties: true
-    AnalyticsSummary:
-      type: object
-      properties:
-        counts:
-          type: object
-          additionalProperties:
-            type: integer
-        revenueAtRiskCents:
-          type: integer
-        expectedLossCents:
-          type: integer
-        recoverableCents:
-          type: integer
-        lostRevenueMonthlyCents:
-          type: integer
-        hourlyShare:
-          type: number
-        modelVersion:
-          type: integer
-        asOf:
+          minimum: 1.0
+          title: Ownerid
+        paymentTerm:
+          type: string
+          enum:
+          - hour
+          - week
+          - month
+          - quarter_year
+          - half_year
+          - year
+          title: Paymentterm
+        autoProlong:
+          type: boolean
+          title: Autoprolong
+        createdAt:
           type: string
           format: date-time
-        calculatedAt:
+          title: Createdat
+        expiresAt:
           type: string
           format: date-time
-      required: [counts, modelVersion, asOf, calculatedAt]
-    ChurnTimeline:
+          title: Expiresat
+        status:
+          type: string
+          enum:
+          - active
+          - blocked
+          - deleted
+          - suspended
+          - prolong_wait
+          title: Status
+        price:
+          type: integer
+          minimum: 0.0
+          title: Price
+      additionalProperties: false
       type: object
-      additionalProperties: true
-    ModelSettings:
-      type: object
-      additionalProperties: true
-    SourceSnapshot:
-      type: object
+      required:
+      - id
+      - name
+      - ownerId
+      - paymentTerm
+      - autoProlong
+      - createdAt
+      - expiresAt
+      - status
+      - price
+      title: ServiceInput
+    SnapshotInput:
       properties:
         capturedAt:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Capturedat
+        accounts:
+          items:
+            $ref: '#/components/schemas/AccountInput'
+          type: array
+          title: Accounts
+        services:
+          items:
+            $ref: '#/components/schemas/ServiceInput'
+          type: array
+          title: Services
+        transactions:
+          items:
+            $ref: '#/components/schemas/TransactionInput'
+          type: array
+          title: Transactions
+      additionalProperties: false
+      type: object
+      required:
+      - accounts
+      - services
+      - transactions
+      title: SnapshotInput
+    TransactionInput:
+      properties:
+        id:
+          type: integer
+          minimum: 1.0
+          title: Id
+        amount:
+          type: integer
+          maximum: 1000.0
+          minimum: 0.0
+          title: Amount
+        status:
+          type: string
+          enum:
+          - not_performed
+          - performed
+          title: Status
+        performedAt:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Performedat
+        createdAt:
           type: string
           format: date-time
-        accounts:
-          type: array
+          title: Createdat
+        type:
+          type: string
+          enum:
+          - prolong
+          - order
+          title: Type
+        serviceId:
+          type: integer
+          minimum: 1.0
+          title: Serviceid
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - amount
+      - status
+      - performedAt
+      - createdAt
+      - type
+      - serviceId
+      title: TransactionInput
+    ValidationError:
+      properties:
+        loc:
           items:
-            type: object
-            additionalProperties: true
-        services:
+            anyOf:
+            - type: string
+            - type: integer
           type: array
-          items:
-            type: object
-            additionalProperties: true
-        transactions:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
-      required: [accounts, services, transactions]
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

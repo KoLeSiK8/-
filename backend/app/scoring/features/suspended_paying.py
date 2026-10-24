@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class SuspendedPaying(Feature):
     key = "suspended_paying"
     title = "Приостановленная услуга"
+    description = (
+        "Услуга приостановлена, но остаётся у клиента. Значение задаётся настройкой "
+        "suspended_value (по умолчанию 0,4)."
+    )
     scope = "service"
     default_weight = 5
 

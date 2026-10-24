@@ -77,7 +77,7 @@ def _metrics_response(request: Request, authorization: str | None) -> Response:
     )
 
 
-@router.get("/metrics", operation_id="getMetrics")
+@router.get("/metrics", operation_id="getMetrics", summary="Метрики Prometheus (сессия или Bearer METRICS_TOKEN)")
 def get_metrics(
     request: Request,
     authorization: str | None = Header(default=None),
@@ -85,7 +85,7 @@ def get_metrics(
     return _metrics_response(request, authorization)
 
 
-@router.get("/metics", operation_id="getMetricsTypoAlias")
+@router.get("/metics", operation_id="getMetricsTypoAlias", summary="Алиас /metrics (написание из ТЗ)")
 def get_metrics_alias(
     request: Request,
     authorization: str | None = Header(default=None),

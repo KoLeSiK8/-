@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class BillingAnomaly(Feature):
     key = "billing_anomaly"
     title = "Аномалия продления"
+    description = (
+        "Услуга ждёт продления, хотя автопродление включено и денег хватает: "
+        "вероятен сбой биллинга, который раздражает клиента."
+    )
     scope = "service"
     default_weight = 10
 

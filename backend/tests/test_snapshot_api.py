@@ -137,86 +137,86 @@ def test_snapshot_rolls_back_when_recompute_fails(
     assert after_events == before_events
 
 
-    @pytest.mark.parametrize(
-        "sort_by,key",
-        [
-            ("id", "id"),
-            ("email", "email"),
-            ("balance", "balanceCents"),
-            ("total_replenished", "totalReplenishedCents"),
-        ],
+@pytest.mark.parametrize(
+    "sort_by,key",
+    [
+        ("id", "id"),
+        ("email", "email"),
+        ("balance", "balanceCents"),
+        ("total_replenished", "totalReplenishedCents"),
+    ],
+)
+@pytest.mark.parametrize("order,reverse", [("asc", False), ("desc", True)])
+def test_customer_sorting(
+    client: TestClient, sort_by: str, key: str, order: str, reverse: bool
+) -> None:
+    response = client.get(
+        "/api/v1/customers",
+        params={"sort_by": sort_by, "order": order, "size": 50},
     )
-    @pytest.mark.parametrize("order,reverse", [("asc", False), ("desc", True)])
-    def test_customer_sorting(
-        client: TestClient, sort_by: str, key: str, order: str, reverse: bool
-    ) -> None:
-        response = client.get(
-            "/api/v1/customers",
-            params={"sort_by": sort_by, "order": order, "size": 50},
+
+    assert response.status_code == 200
+    values = [item[key] for item in response.json()["items"]]
+    assert values == sorted(values, reverse=reverse)
+
+
+def test_customer_filter_search_and_detail(client: TestClient) -> None:
+    filtered = client.get("/api/v1/customers", params={"level": "high", "q": "user-0005"})
+    assert filtered.status_code == 200
+    assert [item["id"] for item in filtered.json()["items"]] == [5]
+
+    detail = client.get("/api/v1/customers/5")
+    assert detail.status_code == 200
+    assert detail.json()["level"] == "high"
+    assert detail.json()["services"]
+    assert detail.json()["reasons"]
+
+
+def test_analytics_summary_and_timeline(client: TestClient) -> None:
+    summary = client.get("/api/v1/analytics/summary")
+    timeline = client.get("/api/v1/analytics/churn-timeline")
+
+    assert summary.status_code == 200
+    assert summary.json()["counts"]["high"] >= 1
+    assert summary.json()["expectedLossCents"] > 0
+    assert timeline.status_code == 200
+    assert {item["type"] for item in timeline.json()["series"]} == {
+        "observed",
+        "estimated",
+        "forecast",
+    }
+
+
+def test_patch_model_settings_changes_scores_and_version(
+    client: TestClient, database_engine: Engine
+) -> None:
+    before_score = client.get("/api/v1/customers/5").json()["score"]
+    before_version = client.get("/api/v1/model/settings").json()["version"]
+
+    response = client.patch(
+        "/api/v1/model/settings",
+        json={"weights": {"funds_deficit": 50}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["version"] == before_version + 1
+    assert client.get("/api/v1/customers/5").json()["score"] != before_score
+
+    with TestClient(create_app(database_engine)) as restarted:
+        login = restarted.post(
+            "/api/v1/auth/login",
+            json={"login": settings.admin_login, "password": settings.admin_password},
         )
-
-        assert response.status_code == 200
-        values = [item[key] for item in response.json()["items"]]
-        assert values == sorted(values, reverse=reverse)
-
-
-    def test_customer_filter_search_and_detail(client: TestClient) -> None:
-        filtered = client.get("/api/v1/customers", params={"level": "high", "q": "user-0005"})
-        assert filtered.status_code == 200
-        assert [item["id"] for item in filtered.json()["items"]] == [5]
-
-        detail = client.get("/api/v1/customers/5")
-        assert detail.status_code == 200
-        assert detail.json()["level"] == "high"
-        assert detail.json()["services"]
-        assert detail.json()["reasons"]
+        assert login.status_code == 200
+        persisted = restarted.get("/api/v1/model/settings").json()
+    assert persisted["version"] == response.json()["version"]
+    assert persisted["settings"]["weights"]["funds_deficit"] == 50
 
 
-    def test_analytics_summary_and_timeline(client: TestClient) -> None:
-        summary = client.get("/api/v1/analytics/summary")
-        timeline = client.get("/api/v1/analytics/churn-timeline")
+def test_patch_rejects_invalid_thresholds(client: TestClient) -> None:
+    response = client.patch(
+        "/api/v1/model/settings",
+        json={"thresholds": {"low": 80, "high": 65}},
+    )
 
-        assert summary.status_code == 200
-        assert summary.json()["counts"]["high"] >= 1
-        assert summary.json()["expectedLossCents"] > 0
-        assert timeline.status_code == 200
-        assert {item["type"] for item in timeline.json()["series"]} == {
-            "observed",
-            "estimated",
-            "forecast",
-        }
-
-
-    def test_patch_model_settings_changes_scores_and_version(
-        client: TestClient, database_engine: Engine
-    ) -> None:
-        before_score = client.get("/api/v1/customers/5").json()["score"]
-        before_version = client.get("/api/v1/model/settings").json()["version"]
-
-        response = client.patch(
-            "/api/v1/model/settings",
-            json={"weights": {"funds_deficit": 50}},
-        )
-
-        assert response.status_code == 200
-        assert response.json()["version"] == before_version + 1
-        assert client.get("/api/v1/customers/5").json()["score"] != before_score
-
-        with TestClient(create_app(database_engine)) as restarted:
-            login = restarted.post(
-                "/api/v1/auth/login",
-                json={"login": settings.admin_login, "password": settings.admin_password},
-            )
-            assert login.status_code == 200
-            persisted = restarted.get("/api/v1/model/settings").json()
-        assert persisted["version"] == response.json()["version"]
-        assert persisted["settings"]["weights"]["funds_deficit"] == 50
-
-
-    def test_patch_rejects_invalid_thresholds(client: TestClient) -> None:
-        response = client.patch(
-            "/api/v1/model/settings",
-            json={"thresholds": {"low": 80, "high": 65}},
-        )
-
-        assert response.status_code == 422
+    assert response.status_code == 422

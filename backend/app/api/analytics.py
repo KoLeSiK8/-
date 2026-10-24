@@ -7,11 +7,11 @@ from ..auth.deps import require_user
 router = APIRouter(dependencies=[Depends(require_user)])
 
 
-@router.get("/summary")
+@router.get("/summary", summary="Сводка для дашборда (те же числа, что в /metrics)")
 def get_summary(request: Request) -> dict:
     return build_summary(request.app.state.engine)
 
 
-@router.get("/churn-timeline")
+@router.get("/churn-timeline", summary="График оттока: факт, оценка, прогноз (в услугах)")
 def get_churn_timeline(request: Request) -> dict:
     return build_timeline(request.app.state.engine)

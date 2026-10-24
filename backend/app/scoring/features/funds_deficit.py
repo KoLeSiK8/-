@@ -1,4 +1,4 @@
-from ..context import ScoringContext
+from ..context import ScoringContext, format_eur, format_number
 from ..registry import Feature, FeatureResult, register_feature
 
 
@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class FundsDeficit(Feature):
     key = "funds_deficit"
     title = "Дефицит средств"
+    description = (
+        "На сколько дней хватит доступных средств при текущих расходах на живые услуги. "
+        "Значение 1 − min(1, запас_дней / горизонт)."
+    )
     scope = "account"
     default_weight = 25
 
@@ -17,5 +21,6 @@ class FundsDeficit(Feature):
         return FeatureResult(
             True,
             value,
-            f"Средств хватит примерно на {runway:.1f} суток при текущих расходах.",
+            f"Доступно {format_eur(ctx.available)}, расход {format_eur(round(ctx.daily_burn))} "
+            f"в сутки: средств хватит примерно на {format_number(runway)} суток.",
         )
