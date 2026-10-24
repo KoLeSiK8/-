@@ -4,6 +4,8 @@ from typing import Any
 from psycopg.types.json import Jsonb
 from sqlalchemy.engine import Engine
 
+from ..db_copy import copy_rows
+
 from ..ingestion.schemas import SnapshotInput
 from ..ingestion.quality import find_quality_warnings
 from .engine import compute_scoring
@@ -141,13 +143,9 @@ def _recompute(
         with active_connection.cursor() as cursor:
             cursor.execute("DELETE FROM app.service_scores")
             cursor.execute("DELETE FROM app.customer_scores")
-            cursor.executemany(
-                """
-                INSERT INTO app.customer_scores
-                    (customer_id, score, level, loyalty, expected_loss_cents, reasons,
-                     data_warnings, model_version, calculated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
+            copy_rows(
+                cursor,
+                "app.customer_scores (customer_id, score, level, loyalty, expected_loss_cents, reasons, data_warnings, model_version, calculated_at)",
                 [
                     (
                         customer.customer_id,
@@ -163,13 +161,9 @@ def _recompute(
                     for customer in scored.customers
                 ],
             )
-            cursor.executemany(
-                """
-                INSERT INTO app.service_scores
-                    (service_id, customer_id, score, feature_contributions, value_cents,
-                     expected_loss_cents, model_version, calculated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
+            copy_rows(
+                cursor,
+                "app.service_scores (service_id, customer_id, score, feature_contributions, value_cents, expected_loss_cents, model_version, calculated_at)",
                 [
                     (
                         service.service_id,

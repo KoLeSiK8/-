@@ -4,6 +4,8 @@ from math import floor
 from psycopg.types.json import Jsonb
 from sqlalchemy.engine import Engine
 
+from ..db_copy import copy_rows
+
 from .quality import find_quality_warnings
 from .schemas import SnapshotInput
 from ..scoring.lock import RECOMPUTE_LOCK
@@ -54,12 +56,9 @@ def _load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
                         (service.id, old_status, service.status, changed_at)
                     )
             if status_events:
-                cursor.executemany(
-                    """
-                    INSERT INTO app.service_status_events
-                        (service_id, old_status, new_status, changed_at)
-                    VALUES (%s, %s, %s, %s)
-                    """,
+                copy_rows(
+                    cursor,
+                    "app.service_status_events (service_id, old_status, new_status, changed_at)",
                     status_events,
                 )
 
@@ -68,13 +67,9 @@ def _load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
             cursor.execute('DELETE FROM public.accounts')
 
             if snapshot.accounts:
-                cursor.executemany(
-                    """
-                    INSERT INTO public.accounts
-                        (id, email, balance, "withdrawBalance", "totalReplenished",
-                         "bonusBalance", "bonusState")
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """,
+                copy_rows(
+                    cursor,
+                    'public.accounts (id, email, balance, "withdrawBalance", "totalReplenished", "bonusBalance", "bonusState")',
                     [
                         (
                             account.id,
@@ -90,13 +85,9 @@ def _load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
                 )
 
             if snapshot.services:
-                cursor.executemany(
-                    """
-                    INSERT INTO public.services
-                        (id, name, "ownerId", "paymentTerm", "autoProlong", "createdAt",
-                         "expiresAt", status, price)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
+                copy_rows(
+                    cursor,
+                    'public.services (id, name, "ownerId", "paymentTerm", "autoProlong", "createdAt", "expiresAt", status, price)',
                     [
                         (
                             service.id,
@@ -114,12 +105,9 @@ def _load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
                 )
 
             if snapshot.transactions:
-                cursor.executemany(
-                    """
-                    INSERT INTO public.transactions
-                        (id, amount, status, "performedAt", "createdAt", type, "serviceId")
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """,
+                copy_rows(
+                    cursor,
+                    'public.transactions (id, amount, status, "performedAt", "createdAt", type, "serviceId")',
                     [
                         (
                             transaction.id,
