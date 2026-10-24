@@ -1,0 +1,176 @@
+import json
+from dataclasses import replace
+from datetime import timedelta
+from pathlib import Path
+
+import pytest
+
+from app.ingestion.schemas import SnapshotInput
+from app.ingestion.quality import snapshot_as_of
+from app.scoring.context import ScoringContext
+from app.scoring.engine import compute_scoring, score_service
+from app.scoring.money import compute_money, service_value_cents
+from app.scoring.registry import FEATURES
+from app.scoring.settings import ScoringSettings
+
+
+OFFICIAL_DATA = Path(__file__).resolve().parents[3] / "data" / "official.json"
+
+
+@pytest.fixture
+def snapshot() -> SnapshotInput:
+    return SnapshotInput.model_validate(
+        json.loads(OFFICIAL_DATA.read_text(encoding="utf-8"))
+    )
+
+
+@pytest.fixture
+def settings() -> ScoringSettings:
+    return ScoringSettings()
+
+
+def context_for(
+    snapshot: SnapshotInput, service_id: int, as_of=None
+) -> ScoringContext:
+    service = next(service for service in snapshot.services if service.id == service_id)
+    account = next(account for account in snapshot.accounts if account.id == service.owner_id)
+    services = [item for item in snapshot.services if item.owner_id == account.id]
+    return ScoringContext(
+        account=account,
+        service=service,
+        services=services,
+        transactions=snapshot.transactions,
+        as_of=as_of or snapshot_as_of(snapshot),
+        horizon_days=7,
+        suspended_value=0.4,
+    )
+
+
+def feature_value(snapshot: SnapshotInput, service_id: int, key: str, as_of=None) -> float:
+    feature = FEATURES[key]()
+    result = feature.compute(context_for(snapshot, service_id, as_of))
+    assert result.applicable
+    return result.value
+
+
+def test_expiry_proximity_uses_clamped_horizon(snapshot: SnapshotInput) -> None:
+    service = next(item for item in snapshot.services if item.id == 1)
+    as_of = service.expires_at - timedelta(days=3.5)
+
+    assert feature_value(snapshot, 1, "expiry_proximity", as_of) == pytest.approx(0.5)
+
+
+def test_autoprolong_off_near_expiry(snapshot: SnapshotInput) -> None:
+    service = next(item for item in snapshot.services if item.id == 1)
+    as_of = service.expires_at - timedelta(days=3)
+
+    assert feature_value(snapshot, 1, "autoprolong_off_near_expiry", as_of) == 1
+
+
+def test_funds_deficit_is_high_for_accounts_five_and_nine(
+    snapshot: SnapshotInput,
+) -> None:
+    assert feature_value(snapshot, 5, "funds_deficit") > 0.5
+    assert feature_value(snapshot, 9, "funds_deficit") > 0.3
+
+
+def test_prolong_wait_value_reaches_one_after_five_days(snapshot: SnapshotInput) -> None:
+    assert feature_value(snapshot, 5, "prolong_wait_state") == 1
+
+
+def test_suspended_service_uses_configured_value(snapshot: SnapshotInput) -> None:
+    assert feature_value(snapshot, 9, "suspended_paying") == 0.4
+
+
+def test_withdraw_leak_uses_withdrawable_share(snapshot: SnapshotInput) -> None:
+    account = next(item for item in snapshot.accounts if item.id == 1)
+    assert feature_value(snapshot, 1, "withdraw_leak") == pytest.approx(
+        account.withdraw_balance / account.balance
+    )
+
+
+def test_bonus_dependency_uses_unlocked_bonus_share(snapshot: SnapshotInput) -> None:
+    account = next(item for item in snapshot.accounts if item.id == 2)
+    assert feature_value(snapshot, 2, "bonus_dependency") == pytest.approx(
+        account.bonus_balance / (account.balance + account.bonus_balance)
+    )
+
+
+def test_unperformed_transaction_share(snapshot: SnapshotInput) -> None:
+    ctx = context_for(snapshot, 1)
+    transactions = ctx.account_transactions
+    expected = sum(tx.status == "not_performed" for tx in transactions) / len(transactions)
+
+    assert feature_value(snapshot, 1, "unperformed_tx_share") == expected
+
+
+def test_billing_anomaly_requires_funded_autoprolong(snapshot: SnapshotInput) -> None:
+    payload = json.loads(OFFICIAL_DATA.read_text(encoding="utf-8"))
+    payload["services"][4]["autoProlong"] = True
+    changed_snapshot = SnapshotInput.model_validate(payload)
+
+    assert feature_value(changed_snapshot, 5, "billing_anomaly") == 1
+
+
+def test_official_snapshot_golden_scores_and_special_states(
+    snapshot: SnapshotInput, settings: ScoringSettings
+) -> None:
+    result = compute_scoring(snapshot, settings)
+    customers = {item.customer_id: item for item in result.customers}
+
+    assert result.as_of.isoformat() == "2026-10-19T14:35:53+00:00"
+    assert customers[1].score == pytest.approx(47.86, abs=0.01)
+    assert customers[5].score == pytest.approx(80.08, abs=0.01)
+    assert customers[5].level == "high"
+    assert customers[6].score is not None
+    assert {customer_id for customer_id in (2, 3, 7, 8) if customers[customer_id].level == "churned"} == {
+        2,
+        3,
+        7,
+        8,
+    }
+    assert customers[1].reasons
+
+
+def test_customer_without_services_is_no_data(
+    snapshot: SnapshotInput, settings: ScoringSettings
+) -> None:
+    remaining_services = [service for service in snapshot.services if service.owner_id != 1]
+    remaining_ids = {service.id for service in remaining_services}
+    reduced = snapshot.model_copy(
+        update={
+            "services": remaining_services,
+            "transactions": [
+                tx for tx in snapshot.transactions if tx.service_id in remaining_ids
+            ],
+        }
+    )
+
+    result = compute_scoring(reduced, settings)
+    customer = next(item for item in result.customers if item.customer_id == 1)
+
+    assert customer.level == "no_data"
+    assert customer.score is None
+
+
+def test_money_formulas_match_official_golden_values(
+    snapshot: SnapshotInput, settings: ScoringSettings
+) -> None:
+    scoring = compute_scoring(snapshot, settings)
+    _, summary = compute_money(snapshot.accounts, snapshot.services, scoring, settings)
+
+    assert service_value_cents(snapshot.services[0], settings) == 68_400
+    assert summary.revenue_at_risk_cents == 1_155_577
+    assert summary.expected_loss_cents == 510_588
+    assert summary.recoverable_cents == 0
+    assert summary.lost_revenue_monthly_cents == 735_386
+    assert summary.hourly_share == pytest.approx(0.997527642, abs=1e-8)
+
+
+def test_zero_weights_make_service_unscorable(
+    snapshot: SnapshotInput, settings: ScoringSettings
+) -> None:
+    context = context_for(snapshot, 1)
+    no_weights = settings.model_copy(update={"weights": {key: 0 for key in settings.weights}})
+
+    assert score_service(context, no_weights).score is None

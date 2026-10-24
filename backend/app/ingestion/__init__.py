@@ -1,0 +1,1 @@
+"""Source snapshot validation and loading."""

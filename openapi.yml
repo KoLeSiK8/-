@@ -1,0 +1,393 @@
+openapi: 3.1.0
+info:
+  title: Анализатор рисков оттока
+  description: API системы анализа риска оттока клиентов.
+  version: 0.1.0
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      summary: Проверка доступности приложения
+      security: []
+      tags: [health]
+      responses:
+        "200":
+          description: Приложение доступно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Вход пользователя
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Успешный вход; устанавливается cookie-сессия
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: Текущий пользователь
+      tags: [auth]
+      responses:
+        "200":
+          description: Пользователь авторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Выход пользователя
+      tags: [auth]
+      responses:
+        "204":
+          description: Сессия удалена
+  /api/v1/customers:
+    get:
+      operationId: listCustomers
+      summary: Список клиентов с фильтрацией и сортировкой
+      tags: [customers]
+      parameters:
+        - in: query
+          name: level
+          description: Уровень риска; параметр можно передавать несколько раз
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/CustomerLevel"
+          style: form
+          explode: true
+        - in: query
+          name: q
+          description: Поиск по ID или части email
+          schema:
+            type: string
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [id, email, balance, total_replenished, score, expected_loss]
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Страница клиентов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/customers/{customerId}:
+    get:
+      operationId: getCustomer
+      summary: Карточка клиента
+      tags: [customers]
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: Данные, оценка, причины и предупреждения клиента
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Клиент не найден
+  /api/v1/analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      summary: Сводные метрики панели
+      tags: [analytics]
+      responses:
+        "200":
+          description: Текущая сводка модели
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/analytics/churn-timeline:
+    get:
+      operationId: getChurnTimeline
+      summary: Фактическая, оценочная и прогнозная динамика оттока
+      tags: [analytics]
+      responses:
+        "200":
+          description: Временной ряд оттока
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChurnTimeline"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/model/settings:
+    get:
+      operationId: getModelSettings
+      summary: Настройки модели и описание признаков
+      tags: [model]
+      responses:
+        "200":
+          description: Текущие настройки модели
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: patchModelSettings
+      summary: Частичное обновление настроек модели
+      tags: [model]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Сохранённые настройки и новая версия модели
+        "422":
+          description: Настройки не прошли проверку диапазонов
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/source/snapshot:
+    put:
+      operationId: putSourceSnapshot
+      summary: Атомарная загрузка снимка исходных данных
+      tags: [source]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SourceSnapshot"
+      responses:
+        "200":
+          description: Снимок загружен и обработан
+        "422":
+          description: Данные не прошли проверку; состояние базы не изменено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/events:
+    get:
+      operationId: subscribeToEvents
+      summary: События пересчёта модели (SSE)
+      tags: [events]
+      responses:
+        "200":
+          description: Поток событий Server-Sent Events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/docs:
+    get:
+      operationId: swaggerUi
+      summary: Swagger UI
+      security: []
+      tags: [documentation]
+      responses:
+        "200":
+          description: Интерактивная документация API
+  /api/v1/openapi.json:
+    get:
+      operationId: openApiSchema
+      summary: OpenAPI-схема приложения
+      security: []
+      tags: [documentation]
+      responses:
+        "200":
+          description: OpenAPI JSON
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Метрики Prometheus
+      security:
+        - sessionCookie: []
+        - metricsBearer: []
+      tags: [metrics]
+      responses:
+        "200":
+          description: Метрики в формате Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /metics:
+    get:
+      operationId: getMetricsTypoAlias
+      summary: Алиас метрик Prometheus
+      security:
+        - sessionCookie: []
+        - metricsBearer: []
+      tags: [metrics]
+      responses:
+        "200":
+          description: Метрики в формате Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+    metricsBearer:
+      type: http
+      scheme: bearer
+  parameters:
+    CustomerId:
+      in: path
+      name: customerId
+      required: true
+      schema:
+        type: integer
+  responses:
+    Unauthorized:
+      description: Требуется авторизация
+  schemas:
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ok
+      required: [status]
+    LoginRequest:
+      type: object
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+      required: [login, password]
+    User:
+      type: object
+      properties:
+        login:
+          type: string
+      required: [login]
+    CustomerLevel:
+      type: string
+      enum: [low, medium, high, churned, no_data]
+    CustomerPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+      required: [items, total, page, size]
+    CustomerDetail:
+      type: object
+      additionalProperties: true
+    AnalyticsSummary:
+      type: object
+      properties:
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+        revenueAtRiskCents:
+          type: integer
+        expectedLossCents:
+          type: integer
+        recoverableCents:
+          type: integer
+        lostRevenueMonthlyCents:
+          type: integer
+        hourlyShare:
+          type: number
+        modelVersion:
+          type: integer
+        asOf:
+          type: string
+          format: date-time
+        calculatedAt:
+          type: string
+          format: date-time
+      required: [counts, modelVersion, asOf, calculatedAt]
+    ChurnTimeline:
+      type: object
+      additionalProperties: true
+    ModelSettings:
+      type: object
+      additionalProperties: true
+    SourceSnapshot:
+      type: object
+      properties:
+        capturedAt:
+          type: string
+          format: date-time
+        accounts:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        services:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        transactions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [accounts, services, transactions]
