@@ -1,29 +1,58 @@
 from datetime import datetime, timezone
+from math import floor
 
 from psycopg.types.json import Jsonb
 from sqlalchemy.engine import Engine
 
 from .quality import find_quality_warnings
 from .schemas import SnapshotInput
+from ..scoring.lock import RECOMPUTE_LOCK
 from ..scoring.recompute import recompute
 
 
 def load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
+    """Replace the source data and recompute scores in one transaction."""
+    with RECOMPUTE_LOCK:
+        return _load_snapshot(engine, snapshot)
+
+
+def _service_identity(owner_id: int, name: str, created_at: datetime) -> tuple:
+    """A service is the same service across snapshots only if these never change.
+
+    Matching on the numeric id alone would treat unrelated services from another
+    dataset (official vs demo) as status transitions and record fake churn.
+    The timestamp is compared in milliseconds because the column is timestamptz(3).
+    """
+    return owner_id, name, floor(created_at.timestamp() * 1000 + 0.5)
+
+
+def _load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
     data_warnings = find_quality_warnings(snapshot)
     connection = engine.raw_connection()
     try:
         connection.autocommit = False
         with connection.cursor() as cursor:
-            cursor.execute('SELECT id, status FROM public.services')
-            previous_statuses = {service_id: status for service_id, status in cursor.fetchall()}
+            cursor.execute(
+                'SELECT id, "ownerId", name, "createdAt", status FROM public.services'
+            )
+            previous = {
+                service_id: (_service_identity(owner_id, name, created_at), status)
+                for service_id, owner_id, name, created_at, status in cursor.fetchall()
+            }
 
             changed_at = snapshot.captured_at or datetime.now(timezone.utc)
-            status_events = [
-                (service.id, previous_statuses[service.id], service.status, changed_at)
-                for service in snapshot.services
-                if service.id in previous_statuses
-                and previous_statuses[service.id] != service.status
-            ]
+            status_events = []
+            for service in snapshot.services:
+                if service.id not in previous:
+                    continue
+                identity, old_status = previous[service.id]
+                same_service = identity == _service_identity(
+                    service.owner_id, service.name, service.created_at
+                )
+                if same_service and old_status != service.status:
+                    status_events.append(
+                        (service.id, old_status, service.status, changed_at)
+                    )
             if status_events:
                 cursor.executemany(
                     """

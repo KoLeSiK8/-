@@ -16,6 +16,7 @@ class Feature:
     title: ClassVar[str]
     scope: ClassVar[str]
     default_weight: ClassVar[float]
+    description: ClassVar[str] = ""
 
     def compute(self, ctx: ScoringContext) -> FeatureResult:
         raise NotImplementedError
@@ -32,14 +33,5 @@ def register_feature(feature: type[Feature]) -> type[Feature]:
 
 
 def load_features() -> None:
-    from .features import (  # noqa: F401
-        autoprolong_off_near_expiry,
-        billing_anomaly,
-        bonus_dependency,
-        expiry_proximity,
-        funds_deficit,
-        prolong_wait_state,
-        suspended_paying,
-        unperformed_tx_share,
-        withdraw_leak,
-    )
+    """Import app.scoring.features, which registers every feature module in it."""
+    from . import features  # noqa: F401

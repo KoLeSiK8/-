@@ -24,6 +24,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-development-only-change-me}
       METRICS_TOKEN: ${METRICS_TOKEN:-development-only-change-me}
       SEED_DATASET: ${SEED_DATASET:-official}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy

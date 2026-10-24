@@ -1,4 +1,4 @@
-from ..context import ScoringContext
+from ..context import ScoringContext, format_eur
 from ..registry import Feature, FeatureResult, register_feature
 
 
@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class BonusDependency(Feature):
     key = "bonus_dependency"
     title = "Зависимость от бонуса"
+    description = (
+        "Доля разблокированного бонуса в доступных средствах: bonusBalance / "
+        "(balance + bonusBalance). Когда бонус закончится, клиенту придётся платить самому."
+    )
     scope = "account"
     default_weight = 5
 
@@ -17,5 +21,6 @@ class BonusDependency(Feature):
         return FeatureResult(
             True,
             value,
-            f"Бонус составляет {value:.0%} доступных средств.",
+            f"Бонус {format_eur(ctx.account.bonus_balance)} составляет {value:.0%} "
+            "доступных средств.",
         )

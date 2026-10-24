@@ -1,7 +1,17 @@
-from datetime import datetime
-from typing import Literal
+from datetime import datetime, timezone
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictInt, model_validator
+
+
+def ensure_utc(value: datetime | None) -> datetime | None:
+    """Treat timestamps without an offset as UTC so naive and aware values never mix."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(ensure_utc)]
 
 
 PaymentTerm = Literal["hour", "week", "month", "quarter_year", "half_year", "year"]
@@ -29,8 +39,8 @@ class ServiceInput(SnapshotModel):
     owner_id: StrictInt = Field(alias="ownerId", ge=1)
     payment_term: PaymentTerm = Field(alias="paymentTerm")
     auto_prolong: bool = Field(alias="autoProlong")
-    created_at: datetime = Field(alias="createdAt")
-    expires_at: datetime = Field(alias="expiresAt")
+    created_at: UtcDatetime = Field(alias="createdAt")
+    expires_at: UtcDatetime = Field(alias="expiresAt")
     status: ServiceStatus
     price: StrictInt = Field(ge=0)
 
@@ -45,8 +55,8 @@ class TransactionInput(SnapshotModel):
     id: StrictInt = Field(ge=1)
     amount: StrictInt = Field(ge=0, le=1000)
     status: TransactionStatus
-    performed_at: datetime | None = Field(alias="performedAt")
-    created_at: datetime = Field(alias="createdAt")
+    performed_at: UtcDatetime | None = Field(alias="performedAt")
+    created_at: UtcDatetime = Field(alias="createdAt")
     type: Literal["prolong", "order"]
     service_id: StrictInt = Field(alias="serviceId", ge=1)
 
@@ -63,7 +73,7 @@ class TransactionInput(SnapshotModel):
 
 
 class SnapshotInput(SnapshotModel):
-    captured_at: datetime | None = Field(default=None, alias="capturedAt")
+    captured_at: UtcDatetime | None = Field(default=None, alias="capturedAt")
     accounts: list[AccountInput]
     services: list[ServiceInput]
     transactions: list[TransactionInput]

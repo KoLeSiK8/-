@@ -1,8 +1,8 @@
-from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from ..ingestion.schemas import UtcDatetime
 from .registry import FEATURES, load_features
 
 load_features()
@@ -40,7 +40,7 @@ class ScoringSettings(BaseModel):
     balance_shield: float = Field(default=0.5, ge=0, le=1)
     suspended_value: float = Field(default=0.4, ge=0, le=1)
     as_of_mode: Literal["snapshot", "now", "fixed"] = "snapshot"
-    as_of_fixed: datetime | None = None
+    as_of_fixed: UtcDatetime | None = None
 
     @model_validator(mode="after")
     def validate_thresholds_and_weights(self) -> "ScoringSettings":
@@ -59,7 +59,7 @@ def feature_descriptions() -> list[dict[str, str | float]]:
         {
             "key": feature.key,
             "title": feature.title,
-            "description": feature.title,
+            "description": feature.description or feature.title,
             "scope": feature.scope,
             "default_weight": feature.default_weight,
         }

@@ -8,6 +8,8 @@ from ..ingestion.schemas import SnapshotInput
 from ..ingestion.quality import find_quality_warnings
 from .engine import compute_scoring
 from .money import compute_money
+from .lock import RECOMPUTE_LOCK
+from .registry import FEATURES
 from .settings import ScoringSettings
 
 
@@ -19,7 +21,7 @@ def load_settings(engine: Engine) -> tuple[ScoringSettings, int]:
             cursor.execute("SELECT settings, version FROM app.model_settings WHERE id = 1")
             row = cursor.fetchone()
             if row is not None:
-                return ScoringSettings.model_validate(row[0]), row[1]
+                return _validate_stored(row[0]), row[1]
             cursor.execute(
                 """
                 INSERT INTO app.model_settings (id, settings, version)
@@ -34,7 +36,7 @@ def load_settings(engine: Engine) -> tuple[ScoringSettings, int]:
                 cursor.execute("SELECT settings, version FROM app.model_settings WHERE id = 1")
                 row = cursor.fetchone()
             connection.commit()
-            return ScoringSettings.model_validate(row[0]), row[1]
+            return _validate_stored(row[0]), row[1]
     except Exception:
         connection.rollback()
         raise
@@ -42,10 +44,28 @@ def load_settings(engine: Engine) -> tuple[ScoringSettings, int]:
         connection.close()
 
 
-def save_settings(engine: Engine, settings: ScoringSettings) -> int:
-    connection = engine.raw_connection()
+def _validate_stored(stored: dict[str, Any]) -> ScoringSettings:
+    """Read stored settings, tolerating features added or removed since they were saved."""
+    data = dict(stored)
+    weights = {
+        key: feature.default_weight for key, feature in FEATURES.items()
+    } | {key: value for key, value in (data.get("weights") or {}).items() if key in FEATURES}
+    data["weights"] = weights
+    return ScoringSettings.model_validate(data)
+
+
+def save_settings(
+    engine: Engine, settings: ScoringSettings, connection: Any | None = None
+) -> int:
+    """Persist settings and bump the version.
+
+    When ``connection`` is given the caller owns the transaction, so the new
+    version and the recomputed scores are committed together.
+    """
+    owns_connection = connection is None
+    active_connection = connection or engine.raw_connection()
     try:
-        with connection.cursor() as cursor:
+        with active_connection.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO app.model_settings (id, settings, version)
@@ -59,22 +79,44 @@ def save_settings(engine: Engine, settings: ScoringSettings) -> int:
                 (Jsonb(settings.model_dump(mode="json")),),
             )
             version = cursor.fetchone()[0]
-        connection.commit()
+        if owns_connection:
+            active_connection.commit()
         return version
     except Exception:
-        connection.rollback()
+        if owns_connection:
+            active_connection.rollback()
         raise
     finally:
-        connection.close()
+        if owns_connection:
+            active_connection.close()
 
 
 def recompute(
     engine: Engine,
     snapshot: SnapshotInput | None = None,
     connection: Any | None = None,
+    settings: ScoringSettings | None = None,
+    version: int | None = None,
+) -> dict[str, Any]:
+    """Score every customer and store the result as the single source of truth.
+
+    Writes app.customer_scores, app.service_scores and app.score_summary. When
+    ``connection`` is passed, the caller commits (snapshot PUT, settings PATCH).
+    """
+    with RECOMPUTE_LOCK:
+        return _recompute(engine, snapshot, connection, settings, version)
+
+
+def _recompute(
+    engine: Engine,
+    snapshot: SnapshotInput | None,
+    connection: Any | None,
+    settings: ScoringSettings | None,
+    version: int | None,
 ) -> dict[str, Any]:
     snapshot = snapshot or _load_snapshot(engine)
-    settings, version = load_settings(engine)
+    if settings is None or version is None:
+        settings, version = load_settings(engine)
     scored = compute_scoring(snapshot, settings)
     customer_money, summary = compute_money(
         snapshot.accounts, snapshot.services, scored, settings
@@ -145,6 +187,34 @@ def recompute(
                     )
                     for service in scored.services
                 ],
+            )
+            cursor.execute(
+                """
+                INSERT INTO app.score_summary
+                    (id, model_version, as_of, calculated_at, revenue_at_risk_cents,
+                     expected_loss_cents, recoverable_cents, lost_revenue_monthly_cents,
+                     hourly_share)
+                VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    model_version = EXCLUDED.model_version,
+                    as_of = EXCLUDED.as_of,
+                    calculated_at = EXCLUDED.calculated_at,
+                    revenue_at_risk_cents = EXCLUDED.revenue_at_risk_cents,
+                    expected_loss_cents = EXCLUDED.expected_loss_cents,
+                    recoverable_cents = EXCLUDED.recoverable_cents,
+                    lost_revenue_monthly_cents = EXCLUDED.lost_revenue_monthly_cents,
+                    hourly_share = EXCLUDED.hourly_share
+                """,
+                (
+                    version,
+                    scored.as_of,
+                    calculated_at,
+                    summary.revenue_at_risk_cents,
+                    summary.expected_loss_cents,
+                    summary.recoverable_cents,
+                    summary.lost_revenue_monthly_cents,
+                    summary.hourly_share,
+                ),
             )
         if owns_connection:
             active_connection.commit()

@@ -6,6 +6,10 @@ from ..registry import Feature, FeatureResult, register_feature
 class UnperformedTxShare(Feature):
     key = "unperformed_tx_share"
     title = "Невыполненные операции"
+    description = (
+        "Доля транзакций аккаунта в статусе not_performed. Данные синтетические, "
+        "поэтому вес по умолчанию низкий."
+    )
     scope = "account"
     default_weight = 5
 
