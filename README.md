@@ -2,6 +2,10 @@
 
 Веб-панель, которая оценивает риск ухода каждого клиента, объясняет причины и переводит риск в деньги. Данные — снимок аккаунтов, услуг и транзакций в формате `data.json`. Оценки пересчитываются сразу после загрузки снимка или изменения настроек модели, и панель обновляется без перезагрузки страницы.
 
+![Дашборд на демо-наборе](docs/img/demo-1-dashboard.png)
+
+**С чего начать:** [сценарий демо на 5 минут](docs/demo.md) · [анализ модели и метрик](docs/analysis.md) · [чек-лист приёмки с доказательствами](docs/acceptance.md)
+
 ## Требования
 
 - Docker Engine и Docker Compose v2.
@@ -40,8 +44,16 @@ docker compose up -d --build
 
 ## Загрузка данных
 
-- В панели: вкладка «Данные» → выбрать JSON-файл или нажать «Демо-данные» / «Официальный набор».
-- Через API (нужна сессия): `PUT /api/v1/source/snapshot` с телом в формате `data.json`, или `POST /api/v1/source/presets/demo|official`.
+- В панели: вкладка «Данные» → выбрать JSON-файл или нажать один из встроенных наборов.
+- Через API (нужна сессия): `PUT /api/v1/source/snapshot` с телом в формате `data.json`, или `POST /api/v1/source/presets/{name}`.
+
+Встроенные наборы (`data/`):
+
+| Набор | Что внутри |
+|---|---|
+| `official` | 10 клиентов из ТЗ; эталон для проверки формул |
+| `demo` | 200 клиентов пяти сегментов с разбросом балансов, цен и сроков |
+| `demo-step2` | те же клиенты через сутки: часть пополнила баланс, часть ушла. Нужен для шага 5 [сценария демо](docs/demo.md) и линии «Факт» на графике |
 
 Снимок проверяется целиком: при любой ошибке API отвечает 422 со списком проблем, и в базе ничего не меняется. Загрузка, история смен статусов и пересчёт выполняются одной транзакцией.
 
@@ -56,7 +68,7 @@ curl -b cookies.txt -X PUT -H 'Content-Type: application/json' \
 curl -H "Authorization: Bearer $METRICS_TOKEN" http://localhost:8081/metrics
 ```
 
-Демо-набор пересобирается командой `make demo-data` (`tools/generate_demo.py --accounts 200 --seed 42`).
+Демо-наборы пересобираются командой `make demo-data` (`tools/generate_demo.py --accounts 200 --seed 42`).
 
 ## Тесты
 
@@ -93,8 +105,15 @@ cd frontend && npm ci && npm run dev
 
 `openapi.yml` в корне выгружается из приложения командой `make openapi`. Тест `backend/tests/test_openapi.py` падает, если файл разошёлся с живой схемой `/api/v1/openapi.json`.
 
+## Анализ модели
+
+`python tools/analyze_model.py` пересчитывает все цифры и графики [docs/analysis.md](docs/analysis.md) на встроенных наборах. Нужны `backend/requirements.txt` и `tools/requirements-analysis.txt`. Результат пишется в `docs/analysis-data.json` и `docs/img/analysis-*.png`.
+
 ## Документация
 
+- [docs/demo.md](docs/demo.md) — сценарий демо со скриншотами.
+- [docs/analysis.md](docs/analysis.md) — как модель ведёт себя на данных: признаки, устойчивость, проверка на втором снимке, денежные метрики, ограничения.
+- [docs/acceptance.md](docs/acceptance.md) — чек-лист приёмки и чем подтверждается каждый пункт.
 - [docs/model.md](docs/model.md) — признаки, формулы, денежная оценка, обоснование коэффициентов.
 - [docs/architecture.md](docs/architecture.md) — компоненты, поток данных, источник правды.
 - [docs/add-feature.md](docs/add-feature.md) — как добавить новый признак риска.

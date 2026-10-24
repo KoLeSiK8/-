@@ -36,8 +36,8 @@ paths:
     post:
       tags:
       - source
-      summary: 'Загрузить встроенный набор: official или demo'
-      description: Load one of the bundled datasets (data/official.json or data/demo.json).
+      summary: 'Загрузить встроенный набор: official, demo или demo-step2 (демо через сутки)'
+      description: Load a bundled dataset from data/<name>.json.
       operationId: load_preset_api_v1_source_presets__name__post
       parameters:
       - name: name
@@ -47,6 +47,7 @@ paths:
           enum:
           - official
           - demo
+          - demo-step2
           type: string
           title: Name
       responses:
@@ -318,6 +319,7 @@ paths:
       tags:
       - auth
       summary: 'Вход: ставит cookie сессии'
+      description: После 5 неудачных попыток за 5 минут с одного адреса для этого логина отвечает 429.
       operationId: login_api_v1_auth_login_post
       requestBody:
         content:

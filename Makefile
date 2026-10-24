@@ -30,8 +30,8 @@ test-docker:   ## backend tests inside the api container (uses a separate databa
 openapi:       ## regenerate openapi.yml from the FastAPI app
 	$(PYTHON) tools/export_openapi.py
 
-demo-data:     ## regenerate data/demo.json
-	$(PYTHON) tools/generate_demo.py --accounts 200 --seed 42 --out data/demo.json
+demo-data:     ## regenerate data/demo.json and data/demo-step2.json
+	$(PYTHON) tools/generate_demo.py --accounts 200 --seed 42 --out data/demo.json --step2-out data/demo-step2.json
 
 frontend-build:
 	cd frontend && npm ci && npm run build

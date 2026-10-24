@@ -19,8 +19,26 @@ class LoginInput(BaseModel):
     password: str = Field(min_length=1)
 
 
-@router.post("/login", summary="Вход: ставит cookie сессии")
+def _throttle_key(request: Request, login_name: str) -> str:
+    client = request.client.host if request.client else "unknown"
+    return f"{client}:{login_name.lower()}"
+
+
+@router.post(
+    "/login",
+    summary="Вход: ставит cookie сессии",
+    description="После 5 неудачных попыток за 5 минут с одного адреса для этого логина отвечает 429.",
+)
 def login(payload: LoginInput, request: Request, response: Response) -> dict[str, str]:
+    throttle = request.app.state.login_throttle
+    key = _throttle_key(request, payload.login)
+    wait = throttle.retry_after(key)
+    if wait:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts, try again later",
+            headers={"Retry-After": str(wait)},
+        )
     connection = request.app.state.engine.raw_connection()
     try:
         with connection.cursor() as cursor:
@@ -30,6 +48,7 @@ def login(payload: LoginInput, request: Request, response: Response) -> dict[str
             )
             user = cursor.fetchone()
             if user is None or not verify_password(payload.password, user[1]):
+                throttle.failed(key)
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid login or password",
@@ -48,6 +67,7 @@ def login(payload: LoginInput, request: Request, response: Response) -> dict[str
     finally:
         connection.close()
 
+    throttle.succeeded(key)
     response.set_cookie(
         key=SESSION_COOKIE,
         value=sign_session_id(session_id),

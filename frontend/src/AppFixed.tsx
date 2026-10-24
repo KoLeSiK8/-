@@ -153,6 +153,7 @@ const t = {
   dropFile: "или перетащите его сюда",
   presets: "Или загрузить набор",
   demo: "Демо-данные",
+  demoStep2: "Демо: через сутки",
   official: "Официальный набор",
   validating: "Проверка и пересчёт…",
   noFile: "Файл не является корректным JSON.",
@@ -177,7 +178,7 @@ const formulas = {
   expectedLoss:
     "Для каждой услуги: стоимость × P(отток | score) × (1 − защита_балансом × покрытие). P — логистическая кривая от score, покрытие — доля стоимости живых услуг, которую закрывают доступные средства.",
   recoverable:
-    "Сколько клиентам не хватает, чтобы продлить услуги, истекающие в горизонте оценки риска: сумма max(0, стоимость истекающих услуг − доступные средства) по клиентам.",
+    "Сколько клиентам не хватает, чтобы сохранить услуги: истекающие в горизонте оценки риска и уже ждущие продления (до удаления через 5 суток). Сумма max(0, стоимость этих услуг − доступные средства) по клиентам.",
   lostMonthly:
     "Месячная стоимость удалённых и заблокированных услуг у ушедших клиентов: цена × 30 / длина периода оплаты.",
   chart:
@@ -329,7 +330,13 @@ function Login({
       await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ login, password }) });
       await onLogin();
     } catch (reason) {
-      setError(reason instanceof ApiError && reason.status === 401 ? t.loginError : t.loginFailed);
+      setError(
+        reason instanceof ApiError && reason.status === 401
+          ? t.loginError
+          : reason instanceof ApiError && reason.status === 429
+            ? "Слишком много неудачных попыток. Попробуйте через несколько минут."
+            : t.loginFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -827,7 +834,28 @@ function Chart({ timeline, theme }: { timeline?: Timeline; theme: Theme }) {
           ]}
         />
         <Area type="monotone" dataKey="forecast" fill={colors.forecastFill} stroke="none" legendType="none" />
-        <Line type="monotone" dataKey="observed" stroke={colors.observed} strokeWidth={2.5} dot={false} />
+        <Line
+          type="monotone"
+          dataKey="observed"
+          stroke={colors.observed}
+          strokeWidth={2.5}
+          // events are sparse (one point per loaded snapshot), so mark the days that have them
+          dot={(props: { cx?: number; cy?: number; value?: number; index?: number }) =>
+            props.value ? (
+              <circle
+                key={`observed-${props.index}`}
+                cx={props.cx}
+                cy={props.cy}
+                r={4}
+                fill={colors.observed}
+                stroke="var(--surface)"
+                strokeWidth={2}
+              />
+            ) : (
+              <g key={`observed-${props.index}`} />
+            )
+          }
+        />
         <Line
           type="monotone"
           dataKey="estimated"
@@ -875,15 +903,21 @@ const specialStateText: Partial<Record<Level, string>> = {
 function Customers() {
   const [level, setLevel] = useState("");
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("score");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<number | null>(null);
   const params = new URLSearchParams({ page: String(page), size: "20", sort_by: sortBy, order });
   if (level) params.set("level", level);
-  if (search) params.set("q", search);
+  if (query) params.set("q", query);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
   const q = useQuery({
-    queryKey: ["customers", level, search, page, sortBy, order],
+    queryKey: ["customers", level, query, page, sortBy, order],
+    placeholderData: (previous) => previous,
     queryFn: () => api<CustomerPage>(`/api/v1/customers?${params}`),
   });
   function sort(key: string) {
@@ -930,6 +964,7 @@ function Customers() {
             className="button button-quiet"
             onClick={() => {
               setSearch("");
+              setQuery("");
               setLevel("");
               setPage(1);
             }}
@@ -1442,10 +1477,11 @@ function Data() {
     }
   }
 
-  const preset = (name: "demo" | "official") =>
+  const presetLabels = { demo: t.demo, "demo-step2": t.demoStep2, official: t.official } as const;
+  const preset = (name: keyof typeof presetLabels) =>
     run(
       () => api<SnapshotResult>(`/api/v1/source/presets/${name}`, { method: "POST" }),
-      name === "demo" ? t.demo : t.official,
+      presetLabels[name],
     );
 
   async function file(selectedFile?: File) {
@@ -1505,6 +1541,14 @@ function Data() {
           <span>{t.presets}</span>
           <button className="button button-secondary" disabled={busy} onClick={() => void preset("demo")}>
             {t.demo}
+          </button>
+          <button
+            className="button button-secondary"
+            disabled={busy}
+            title="Те же клиенты через сутки: часть пополнила баланс, часть ушла"
+            onClick={() => void preset("demo-step2")}
+          >
+            {t.demoStep2}
           </button>
           <button className="button button-quiet" disabled={busy} onClick={() => void preset("official")}>
             {t.official}

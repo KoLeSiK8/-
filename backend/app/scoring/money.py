@@ -74,12 +74,13 @@ def compute_money(
         )
         coverage = min(1.0, available / live_value) if live_value else 0.0
 
+        # Services the customer can still keep by topping up: live services that
+        # expire within the risk horizon, plus prolong_wait services that already
+        # expired but are inside the 5-day grace period before deletion.
         expiring_value = sum(
             service_value_cents(service, settings)
             for service in live_services
-            if 0
-            <= (service.expires_at - scoring.as_of).total_seconds() / 86400
-            <= settings.horizon_days
+            if _renewable(service, scoring.as_of, settings.horizon_days)
         )
         recoverable += max(0, expiring_value - available)
 
@@ -121,6 +122,16 @@ def compute_money(
         hourly_share=hourly_at_risk / revenue_at_risk if revenue_at_risk else 0.0,
     )
     return customers, summary
+
+
+PROLONG_WAIT_GRACE_DAYS = 5
+
+
+def _renewable(service: ServiceInput, as_of, horizon_days: float) -> bool:
+    days_left = (service.expires_at - as_of).total_seconds() / 86400
+    if service.status == "prolong_wait":
+        return -PROLONG_WAIT_GRACE_DAYS <= days_left <= horizon_days
+    return 0 <= days_left <= horizon_days
 
 
 def _to_cents(value: Decimal) -> int:
