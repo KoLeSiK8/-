@@ -608,3 +608,35 @@ body { font-size: 14px; }
   .chart-legend { font-size: 11px; }
   .service-sub, .feature-bar { font-size: 12px; }
 }
+
+/* Formula hints */
+.hint { position: relative; display: inline-flex; }
+.hint-trigger { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: help; }
+.hint-trigger:hover, .hint-trigger:focus-visible { background: var(--surface-soft); color: var(--ink-soft); outline: none; box-shadow: 0 0 0 2px #4cc6f155; }
+.hint.metric-hint { position: absolute; right: 10px; bottom: 8px; }
+.metric-hint .hint-trigger { padding: 2px 4px; }
+.metric-card > p { padding-right: 4px; margin-bottom: 26px; }
+.hint-popover { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 20; width: min(300px, 80vw); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); box-shadow: 0 14px 32px #10203a24; font: 500 12px/1.5 var(--mono); text-align: left; white-space: normal; }
+.section-heading .hint-popover { top: calc(100% + 8px); bottom: auto; }
+
+/* Customer drawer details */
+.drawer-note { margin: 10px 0 0; color: var(--muted); font: 500 11px/1.5 var(--mono); }
+.drawer-stats { margin-top: 4px; }
+.service-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.service-head span { color: var(--muted); font: 600 11px var(--mono); }
+.service-sub { flex-wrap: wrap; }
+.service-money { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 6px; color: var(--ink-soft); font: 600 11px var(--mono); }
+.status-tag { padding: 2px 7px; border-radius: 999px; background: #edf3f8; color: #4f6075; }
+.status-tag.active { background: #e9f6f0; color: #2f7a5b; }
+.status-tag.prolong_wait { background: #feeae5; color: #ae4c40; }
+.status-tag.suspended { background: #fdf0df; color: #9b6b22; }
+.reason-points { color: var(--muted); font-weight: 600; }
+.settings-errors { margin-bottom: 14px; }
+
+html[data-theme="dark"] .legend-line.observed { border-color: #4cc6f1; }
+html[data-theme="dark"] .legend-line.forecast { border-color: #f0a066; }
+html[data-theme="dark"] .status-tag { background: #1d3247; color: #c4d3e3; }
+html[data-theme="dark"] .status-tag.active { background: #163a2e; color: #8fdcb9; }
+html[data-theme="dark"] .status-tag.prolong_wait { background: #432420; color: #f3a99e; }
+html[data-theme="dark"] .status-tag.suspended { background: #3d2d17; color: #f0c27e; }
+html[data-theme="dark"] .hint-popover { box-shadow: 0 14px 32px #00000066; }
