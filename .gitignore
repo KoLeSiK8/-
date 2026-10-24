@@ -4,4 +4,5 @@ __pycache__/
 .pytest_cache/
 .venv/
 node_modules/
-frontend/dist/*.tsbuildinfo
+frontend/dist/
+*.tsbuildinfo

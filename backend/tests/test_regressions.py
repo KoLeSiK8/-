@@ -228,3 +228,20 @@ def test_stored_settings_survive_feature_changes(
         ).status_code == 200
     finally:
         client.patch("/api/v1/model/settings", json={"weights": {"withdraw_leak": 5}})
+
+
+def test_demo_step2_feeds_observed_churn(client: TestClient) -> None:
+    client.post("/api/v1/source/presets/demo")
+    before = client.get("/api/v1/analytics/summary").json()
+    try:
+        step2 = client.post("/api/v1/source/presets/demo-step2")
+        after = client.get("/api/v1/analytics/summary").json()
+        timeline = client.get("/api/v1/analytics/churn-timeline").json()
+    finally:
+        client.post("/api/v1/source/presets/official")
+
+    assert step2.status_code == 200
+    assert step2.json()["changedStatuses"] > 0
+    assert after["counts"]["high"] < before["counts"]["high"]
+    observed = next(item for item in timeline["series"] if item["type"] == "observed")
+    assert sum(point["value"] for point in observed["points"]) > 0

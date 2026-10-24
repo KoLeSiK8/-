@@ -14,6 +14,7 @@ from .api.metrics import router as metrics_router
 from .auth.router import router as auth_router
 from .config import dataset_path, settings
 from .auth.security import hash_password
+from .auth.throttle import LoginThrottle
 from .ingestion.loader import load_snapshot
 from .ingestion.schemas import SnapshotInput
 from .scoring.recompute import recompute
@@ -50,6 +51,7 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
     )
     application.state.engine = app_engine
     application.state.event_bus = EventBus()
+    application.state.login_throttle = LoginThrottle()
     application.include_router(source_router, prefix="/api/v1/source", tags=["source"])
     application.include_router(customers_router, prefix="/api/v1/customers", tags=["customers"])
     application.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])

@@ -88,3 +88,17 @@ def test_admin_password_is_synchronized_after_restart(
     assert new_password.status_code == 200
 
 
+
+
+def test_repeated_wrong_passwords_are_throttled(database_engine: Engine) -> None:
+    with TestClient(create_app(database_engine)) as client:
+        wrong = {"login": settings.admin_login, "password": "definitely-wrong"}
+        statuses = [client.post("/api/v1/auth/login", json=wrong).status_code for _ in range(6)]
+        right = client.post(
+            "/api/v1/auth/login",
+            json={"login": settings.admin_login, "password": settings.admin_password},
+        )
+
+    assert statuses == [401] * 5 + [429]
+    assert right.status_code == 429
+    assert int(right.headers["Retry-After"]) > 0

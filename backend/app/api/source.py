@@ -28,9 +28,14 @@ def put_snapshot(snapshot: SnapshotInput, request: Request) -> dict[str, int]:
     return _apply(snapshot, request)
 
 
-@router.post("/presets/{name}", summary="Загрузить встроенный набор: official или demo")
-def load_preset(name: Literal["official", "demo"], request: Request) -> dict[str, int]:
-    """Load one of the bundled datasets (data/official.json or data/demo.json)."""
+@router.post(
+    "/presets/{name}",
+    summary="Загрузить встроенный набор: official, demo или demo-step2 (демо через сутки)",
+)
+def load_preset(
+    name: Literal["official", "demo", "demo-step2"], request: Request
+) -> dict[str, int]:
+    """Load a bundled dataset from data/<name>.json."""
     path = dataset_path(name)
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"Dataset {name} is not bundled")
