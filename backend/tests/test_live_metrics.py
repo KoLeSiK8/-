@@ -1,6 +1,7 @@
 import json
 import os
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -16,7 +17,7 @@ from app.analytics.summary import build_summary
 from app.api.events import stream_events
 from app.events import RecomputedEvent
 
-OFFICIAL_DATA = Path(__file__).resolve().parents[1] / "data" / "official.json"
+OFFICIAL_DATA = Path(__file__).resolve().parents[2] / "data" / "official.json"
 
 
 @pytest.fixture(scope="module")
@@ -124,7 +125,10 @@ def test_sse_stream_encodes_recomputed_event() -> None:
         response = await stream_events(request)
         stream = response.body_iterator
         connected = await anext(stream)
-        bus.publish(RecomputedEvent(7, datetime(2026, 10, 24, tzinfo=timezone.utc)))
+        await asyncio.to_thread(
+            bus.publish,
+            RecomputedEvent(7, datetime(2026, 10, 24, tzinfo=timezone.utc)),
+        )
         message = await anext(stream)
         await stream.aclose()
         return connected, message

@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
@@ -15,6 +16,7 @@ from app.scoring.settings import ScoringSettings
 
 
 OFFICIAL_DATA = Path(__file__).resolve().parents[3] / "data" / "official.json"
+DEMO_DATA = Path(__file__).resolve().parents[3] / "data" / "demo.json"
 
 
 @pytest.fixture
@@ -174,3 +176,36 @@ def test_zero_weights_make_service_unscorable(
     no_weights = settings.model_copy(update={"weights": {key: 0 for key in settings.weights}})
 
     assert score_service(context, no_weights).score is None
+
+
+def test_demo_data_has_all_states_and_required_scenarios(
+    settings: ScoringSettings,
+) -> None:
+    demo = SnapshotInput.model_validate(
+        json.loads(DEMO_DATA.read_text(encoding="utf-8"))
+    )
+    result = compute_scoring(demo, settings)
+    levels = Counter(customer.level for customer in result.customers)
+    accounts = {account.id: account for account in demo.accounts}
+    churned_ids = {
+        customer.customer_id for customer in result.customers if customer.level == "churned"
+    }
+    funded_prolong_wait = [
+        service
+        for service in demo.services
+        if service.status == "prolong_wait"
+        and service.auto_prolong
+        and accounts[service.owner_id].balance >= service.price
+    ]
+    statuses_by_owner: dict[int, set[str]] = {}
+    for service in demo.services:
+        statuses_by_owner.setdefault(service.owner_id, set()).add(service.status)
+
+    assert all(levels[level] > 0 for level in ("low", "medium", "high", "churned", "no_data"))
+    assert funded_prolong_wait
+    assert all(accounts[customer_id].total_replenished >= 350000 for customer_id in churned_ids)
+    assert any(len(statuses) > 1 for statuses in statuses_by_owner.values())
+    assert any(
+        service.payment_term == "hour" and accounts[service.owner_id].balance < service.price
+        for service in demo.services
+    )

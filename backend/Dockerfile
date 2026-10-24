@@ -13,6 +13,7 @@ COPY backend/tests ./backend/tests
 COPY backend/migrations ./migrations
 COPY test_data/data.json ./test_data/data.json
 COPY data/official.json ./data/official.json
+COPY data/demo.json ./data/demo.json
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
