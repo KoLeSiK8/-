@@ -62,3 +62,29 @@ def test_invalid_password_is_rejected(database_engine: Engine) -> None:
     assert response.status_code == 401
 
 
+def test_admin_password_is_synchronized_after_restart(
+    database_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "admin_password", "phase3-first-password")
+    with TestClient(create_app(database_engine)) as first_start:
+        first_login = first_start.post(
+            "/api/v1/auth/login",
+            json={"login": settings.admin_login, "password": "phase3-first-password"},
+        )
+    assert first_login.status_code == 200
+
+    monkeypatch.setattr(settings, "admin_password", "phase3-second-password")
+    with TestClient(create_app(database_engine)) as restarted:
+        old_password = restarted.post(
+            "/api/v1/auth/login",
+            json={"login": settings.admin_login, "password": "phase3-first-password"},
+        )
+        new_password = restarted.post(
+            "/api/v1/auth/login",
+            json={"login": settings.admin_login, "password": "phase3-second-password"},
+        )
+
+    assert old_password.status_code == 401
+    assert new_password.status_code == 200
+
+

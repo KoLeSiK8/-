@@ -77,7 +77,8 @@ def _ensure_admin(app_engine: Engine) -> None:
                 """
                 INSERT INTO app.users (login, password_hash)
                 VALUES (%s, %s)
-                ON CONFLICT (login) DO NOTHING
+                ON CONFLICT (login) DO UPDATE SET
+                    password_hash = EXCLUDED.password_hash
                 """,
                 (settings.admin_login, hash_password(settings.admin_password)),
             )
