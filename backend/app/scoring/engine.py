@@ -53,8 +53,17 @@ def compute_scoring(
     as_of = resolve_as_of(snapshot, active_settings)
     accounts = {account.id: account for account in snapshot.accounts}
     services_by_owner: dict[int, list[ServiceInput]] = {}
+    owner_by_service: dict[int, int] = {}
     for service in snapshot.services:
         services_by_owner.setdefault(service.owner_id, []).append(service)
+        owner_by_service[service.id] = service.owner_id
+    # Index transactions by account once: passing the whole list to every service
+    # made account-level features O(services x transactions).
+    transactions_by_owner: dict[int, list] = {}
+    for transaction in snapshot.transactions:
+        owner_id = owner_by_service.get(transaction.service_id)
+        if owner_id is not None:
+            transactions_by_owner.setdefault(owner_id, []).append(transaction)
 
     service_scores: list[ServiceScore] = []
     customer_scores: list[CustomerScore] = []
@@ -79,7 +88,7 @@ def compute_scoring(
                 account=accounts[service.owner_id],
                 service=service,
                 services=customer_services,
-                transactions=snapshot.transactions,
+                transactions=transactions_by_owner.get(account.id, []),
                 as_of=as_of,
                 horizon_days=active_settings.horizon_days,
                 suspended_value=active_settings.suspended_value,
