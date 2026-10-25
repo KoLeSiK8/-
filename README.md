@@ -117,4 +117,3 @@ cd frontend && npm ci && npm run dev
 - [docs/model.md](docs/model.md) — признаки, формулы, денежная оценка, обоснование коэффициентов.
 - [docs/architecture.md](docs/architecture.md) — компоненты, поток данных, источник правды.
 - [docs/add-feature.md](docs/add-feature.md) — как добавить новый признак риска.
-- [PLAN.md](PLAN.md) — исходный план и чек-лист приёмки.
