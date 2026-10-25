@@ -28,12 +28,12 @@ def _signature(session_id: UUID) -> str:
 
 
 def sign_session_id(session_id: UUID) -> str:
-    """Cookie value: "<uuid>.<hmac>". The database still decides whether it is valid."""
+
     return f"{session_id}.{_signature(session_id)}"
 
 
 def read_session_id(cookie: str | None) -> UUID | None:
-    """Return the session id from a signed cookie, or None if it is malformed or forged."""
+
     if not cookie or "." not in cookie:
         return None
     raw_id, signature = cookie.rsplit(".", 1)

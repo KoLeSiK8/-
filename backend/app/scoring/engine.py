@@ -57,8 +57,8 @@ def compute_scoring(
     for service in snapshot.services:
         services_by_owner.setdefault(service.owner_id, []).append(service)
         owner_by_service[service.id] = service.owner_id
-    # Index transactions by account once: passing the whole list to every service
-    # made account-level features O(services x transactions).
+
+
     transactions_by_owner: dict[int, list] = {}
     for transaction in snapshot.transactions:
         owner_id = owner_by_service.get(transaction.service_id)

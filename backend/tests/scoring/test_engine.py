@@ -205,14 +205,14 @@ def test_demo_data_has_all_states_and_required_scenarios(
     assert funded_prolong_wait
     assert all(accounts[customer_id].total_replenished >= 350000 for customer_id in churned_ids)
     assert any(len(statuses) > 1 for statuses in statuses_by_owner.values())
-    # expensive hourly service the balance cannot cover for a day
+
     assert any(
         service.payment_term == "hour"
         and service.status == "active"
         and accounts[service.owner_id].balance < service.price * 24
         for service in demo.services
     )
-    # customers differ inside each level, the data is not a handful of templates
+
     scores = {round(item.score, 1) for item in result.customers if item.score is not None}
     assert len(scores) > 50
 
@@ -244,7 +244,7 @@ def test_recoverable_includes_prolong_wait_in_grace_period(
     as_of = snapshot_as_of(snapshot)
     services = [
         service.model_copy(update={"expires_at": as_of - timedelta(days=1)})
-        if service.id == 5  # prolong_wait, account 5
+        if service.id == 5  
         else service
         for service in snapshot.services
     ]

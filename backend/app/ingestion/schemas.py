@@ -5,7 +5,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictInt, mo
 
 
 def ensure_utc(value: datetime | None) -> datetime | None:
-    """Treat timestamps without an offset as UTC so naive and aware values never mix."""
+
     if value is not None and value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value

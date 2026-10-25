@@ -1,8 +1,4 @@
 BEGIN;
-
--- Dashboard totals written by every recompute in the same transaction as the
--- customer/service scores, so /analytics/summary, /metrics and the UI all read
--- one stored result instead of recalculating on every request.
 CREATE TABLE IF NOT EXISTS app.score_summary (
     id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     model_version integer NOT NULL,

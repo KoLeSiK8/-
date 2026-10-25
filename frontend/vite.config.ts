@@ -1,7 +1,5 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-
-// In development the API runs separately (uvicorn on :8000); proxy it like nginx does.
 const apiTarget = process.env.VITE_API_TARGET ?? "http://localhost:8000";
 
 export default defineConfig({

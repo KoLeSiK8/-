@@ -1,20 +1,4 @@
-"""Deterministic demo data for the churn risk analyzer.
 
-Two snapshots are produced from one seed:
-
-* ``data/demo.json`` - the main dataset (default 200 accounts, as_of 2026-10-24);
-* ``data/demo-step2.json`` - the same customers one day later, for step 5 of the
-  demo scenario: some risky customers topped up and switched auto-renewal on
-  (their risk drops), others lost their services (the "observed" churn line).
-
-Customers differ inside each segment (balances, prices, terms, expiry dates,
-transaction histories), so score distributions and the churn timeline look like
-real data rather than copies of five templates.
-
-Usage:
-    python tools/generate_demo.py --accounts 200 --seed 42 \\
-        --out data/demo.json --step2-out data/demo-step2.json
-"""
 
 import argparse
 import copy
@@ -34,7 +18,7 @@ PERIOD_DAYS = {
     "half_year": 182,
     "year": 365,
 }
-# Typical monthly-equivalent prices in cents by term (hourly is per hour).
+
 PRICE_RANGES = {
     "hour": (40, 400),
     "week": (300, 4000),
@@ -44,7 +28,7 @@ PRICE_RANGES = {
     "year": (9000, 280000),
 }
 SEGMENTS = {
-    # segment: share of accounts
+
     "healthy": 0.38,
     "watch": 0.24,
     "risky": 0.18,
@@ -151,7 +135,7 @@ class Builder:
             self.next_transaction += 1
 
     def old_deleted(self, owner_id: int, *, status: str = "deleted") -> dict:
-        """A service the customer dropped some time ago (spread over ~4 months)."""
+
         rng = self.rng
         return self.service(
             owner_id,
@@ -204,7 +188,7 @@ def generate_demo(accounts: int = 200, seed: int = 42) -> dict[str, Any]:
                     failed_share=0.05,
                 )
             if account_id % 9 == 0:
-                # billing anomaly: waiting for renewal although money and auto-renewal are there
+
                 b.service(
                     account_id,
                     term="month",
@@ -241,11 +225,11 @@ def generate_demo(accounts: int = 200, seed: int = 42) -> dict[str, Any]:
                 b.old_deleted(account_id)
             continue
 
-        # risky
+
         b.account(account_id, rng.randint(0, 4000))
         pattern = rng.choice(["hourly", "prolong_wait", "expiring", "prolong_wait"])
         if pattern == "hourly":
-            # expensive hourly service, balance lasts a few hours
+
             b.service(
                 account_id,
                 term="hour",
@@ -287,26 +271,19 @@ def generate_demo(accounts: int = 200, seed: int = 42) -> dict[str, Any]:
         if rng.random() < 0.6:
             b.old_deleted(account_id)
 
-    # A few data-quality cases the panel should flag (see docs/model.md).
+
     pending = [s for s in b.data["services"] if s["status"] == "prolong_wait" and not s["autoProlong"]]
     for service in pending[:2]:
-        service["expiresAt"] = iso(AS_OF - timedelta(days=rng.uniform(6, 9)))  # overdue > 5 days
+        service["expiresAt"] = iso(AS_OF - timedelta(days=rng.uniform(6, 9)))  
     expired = [s for s in b.data["services"] if s["status"] == "active" and s["paymentTerm"] == "month"]
     for service in expired[3:5]:
-        service["expiresAt"] = iso(AS_OF - timedelta(days=rng.uniform(0.5, 2)))  # active but expired
+        service["expiresAt"] = iso(AS_OF - timedelta(days=rng.uniform(0.5, 2)))  
 
     return b.data
 
 
 def generate_step2(base: dict[str, Any], seed: int = 42) -> dict[str, Any]:
-    """The same customers one day later.
 
-    * risky customers with a pending renewal: about half top up and switch
-      auto-renewal on (renewed for one period), the rest lose the service
-      (status deleted) - these transitions feed the "observed" churn line;
-    * expensive hourly services whose balance ran out are blocked;
-    * services that expired without auto-renewal move to prolong_wait.
-    """
     rng = random.Random(seed + 1)
     data = copy.deepcopy(base)
     data["capturedAt"] = iso(STEP2_AS_OF)
@@ -323,7 +300,7 @@ def generate_step2(base: dict[str, Any], seed: int = 42) -> dict[str, Any]:
         expires_at = parse(service["expiresAt"])
         if service["status"] == "prolong_wait" and available(account) < service["price"]:
             if rng.random() < 0.5 or service["ownerId"] in rescued_owners:
-                # the customer paid: top up, renew for one period, auto-renewal on
+
                 rescued_owners.add(service["ownerId"])
                 top_up = service["price"] * 3
                 account["balance"] += top_up - service["price"]
@@ -360,7 +337,7 @@ def generate_step2(base: dict[str, Any], seed: int = 42) -> dict[str, Any]:
         ):
             service["status"] = "prolong_wait"
 
-    # rescued customers also switch auto-renewal on for their other live services
+
     for service in data["services"]:
         if service["ownerId"] in rescued_owners and service["status"] in {"active", "suspended"}:
             service["autoProlong"] = True

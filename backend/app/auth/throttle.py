@@ -1,4 +1,4 @@
-"""In-memory limit on failed logins (the API runs as a single process)."""
+
 
 from collections import deque
 from threading import Lock
@@ -22,7 +22,7 @@ class LoginThrottle:
         return attempts
 
     def retry_after(self, key: str) -> int:
-        """Seconds until the next attempt is allowed, 0 if allowed now."""
+
         now = monotonic()
         with self._lock:
             attempts = self._recent(key, now)

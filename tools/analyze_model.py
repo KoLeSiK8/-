@@ -1,15 +1,4 @@
-"""Reproducible analysis of the churn model for docs/analysis.md.
 
-Runs the production scoring code (backend/app/scoring) on the bundled datasets
-and writes:
-
-* docs/img/analysis-*.png - charts used in docs/analysis.md;
-* docs/analysis-data.json - every number quoted in docs/analysis.md.
-
-Usage (from the repository root, with backend requirements + matplotlib):
-    pip install -r backend/requirements.txt -r tools/requirements-analysis.txt
-    python tools/analyze_model.py
-"""
 
 from __future__ import annotations
 
@@ -22,18 +11,18 @@ from statistics import mean, median
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-import matplotlib  # noqa: E402
+import matplotlib  
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt  
 
-from app.ingestion.quality import find_quality_warnings  # noqa: E402
-from app.ingestion.schemas import SnapshotInput  # noqa: E402
-from app.scoring.context import PERIOD_DAYS  # noqa: E402
-from app.scoring.engine import compute_scoring  # noqa: E402
-from app.scoring.money import churn_probability, compute_money, service_value_cents  # noqa: E402
-from app.scoring.registry import FEATURES  # noqa: E402
-from app.scoring.settings import ScoringSettings  # noqa: E402
+from app.ingestion.quality import find_quality_warnings  
+from app.ingestion.schemas import SnapshotInput  
+from app.scoring.context import PERIOD_DAYS  
+from app.scoring.engine import compute_scoring  
+from app.scoring.money import churn_probability, compute_money, service_value_cents  
+from app.scoring.registry import FEATURES  
+from app.scoring.settings import ScoringSettings  
 
 DATA = ROOT / "data"
 IMG = ROOT / "docs" / "img"
@@ -46,7 +35,7 @@ LEVEL_RU = {
     "no_data": "нет оценки",
 }
 
-# Reference palette (dataviz skill): slot 1 blue, slot 2 orange; chrome tokens.
+
 SERIES_1 = "#2a78d6"
 SERIES_2 = "#eb6834"
 INK = "#0b0b0b"
@@ -96,7 +85,7 @@ def title(ax, text: str, subtitle: str | None = None) -> None:
         ax.text(0, 1.02, subtitle, transform=ax.transAxes, color=INK_2, fontsize=9, va="bottom")
 
 
-# --------------------------------------------------------------------------- analysis
+
 
 
 def level_counts(scoring) -> dict[str, int]:
@@ -253,7 +242,7 @@ def sensitivity(snapshot: SnapshotInput, base: ScoringSettings) -> dict:
 
 
 def backtest(step1: SnapshotInput, step2: SnapshotInput, settings: ScoringSettings) -> dict:
-    """Did customers scored riskier on day 1 lose a service by day 2?"""
+
     scoring = compute_scoring(step1, settings)
     lost_owner = set()
     old = {service.id: service for service in step1.services}
@@ -344,7 +333,7 @@ def revenue_by_term(snapshot: SnapshotInput, settings: ScoringSettings) -> dict[
     return {term: round(totals.get(term, 0), 2) for term in PERIOD_DAYS}
 
 
-# --------------------------------------------------------------------------- charts
+
 
 
 def chart_score_distribution(snapshot, settings) -> str:

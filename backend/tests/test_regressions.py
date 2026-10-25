@@ -1,4 +1,4 @@
-"""Regression tests for issues found in the code review."""
+
 
 import json
 import os
@@ -157,7 +157,7 @@ def test_timeline_uses_one_unit(client: TestClient) -> None:
     series = {item["type"]: item["points"] for item in timeline["series"]}
     assert series["estimated"], "demo data has deleted services"
     assert series["forecast"], "demo data has services expiring soon"
-    # counts of services, not euro cents
+
     assert max(point["value"] for point in series["estimated"]) < 480
     assert all(float(point["value"]).is_integer() for point in series["estimated"])
 

@@ -47,7 +47,7 @@ def load_settings(engine: Engine) -> tuple[ScoringSettings, int]:
 
 
 def _validate_stored(stored: dict[str, Any]) -> ScoringSettings:
-    """Read stored settings, tolerating features added or removed since they were saved."""
+
     data = dict(stored)
     weights = {
         key: feature.default_weight for key, feature in FEATURES.items()
@@ -59,11 +59,7 @@ def _validate_stored(stored: dict[str, Any]) -> ScoringSettings:
 def save_settings(
     engine: Engine, settings: ScoringSettings, connection: Any | None = None
 ) -> int:
-    """Persist settings and bump the version.
 
-    When ``connection`` is given the caller owns the transaction, so the new
-    version and the recomputed scores are committed together.
-    """
     owns_connection = connection is None
     active_connection = connection or engine.raw_connection()
     try:
@@ -100,11 +96,7 @@ def recompute(
     settings: ScoringSettings | None = None,
     version: int | None = None,
 ) -> dict[str, Any]:
-    """Score every customer and store the result as the single source of truth.
 
-    Writes app.customer_scores, app.service_scores and app.score_summary. When
-    ``connection`` is passed, the caller commits (snapshot PUT, settings PATCH).
-    """
     with RECOMPUTE_LOCK:
         return _recompute(engine, snapshot, connection, settings, version)
 

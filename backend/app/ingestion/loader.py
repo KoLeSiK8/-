@@ -13,18 +13,13 @@ from ..scoring.recompute import recompute
 
 
 def load_snapshot(engine: Engine, snapshot: SnapshotInput) -> dict[str, int]:
-    """Replace the source data and recompute scores in one transaction."""
+
     with RECOMPUTE_LOCK:
         return _load_snapshot(engine, snapshot)
 
 
 def _service_identity(owner_id: int, name: str, created_at: datetime) -> tuple:
-    """A service is the same service across snapshots only if these never change.
 
-    Matching on the numeric id alone would treat unrelated services from another
-    dataset (official vs demo) as status transitions and record fake churn.
-    The timestamp is compared in milliseconds because the column is timestamptz(3).
-    """
     return owner_id, name, floor(created_at.timestamp() * 1000 + 0.5)
 
 

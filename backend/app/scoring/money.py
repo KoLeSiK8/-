@@ -74,9 +74,9 @@ def compute_money(
         )
         coverage = min(1.0, available / live_value) if live_value else 0.0
 
-        # Services the customer can still keep by topping up: live services that
-        # expire within the risk horizon, plus prolong_wait services that already
-        # expired but are inside the 5-day grace period before deletion.
+
+
+
         expiring_value = sum(
             service_value_cents(service, settings)
             for service in live_services

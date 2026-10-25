@@ -15,7 +15,7 @@ NESTED_KEYS = ("weights", "thresholds", "churn_curve")
 
 
 def validation_detail(exc: ValidationError) -> list[dict[str, Any]]:
-    """Pydantic errors without the raw exception objects, which are not JSON-safe."""
+
     return exc.errors(include_url=False, include_context=False, include_input=False)
 
 

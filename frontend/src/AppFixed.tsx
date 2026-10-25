@@ -171,18 +171,17 @@ const t = {
   services_unit: "услуг",
 };
 
-/** Plain-language formulas shown next to every dashboard number (PLAN.md, 4.5). */
 const formulas = {
   atRisk:
     "Сумма стоимости живых услуг у клиентов со средним и высоким риском за денежный горизонт (по умолчанию 30 дней): цена × горизонт / длина периода оплаты.",
   expectedLoss:
-    "Для каждой услуги: стоимость × P(отток | score) × (1 − защита_балансом × покрытие). P — логистическая кривая от score, покрытие — доля стоимости живых услуг, которую закрывают доступные средства.",
+    "Для каждой услуги: стоимость × P(отток | score) × (1 − защита_балансом × покрытие). P – логистическая кривая от score, покрытие – доля стоимости живых услуг, которую закрывают доступные средства.",
   recoverable:
     "Сколько клиентам не хватает, чтобы сохранить услуги: истекающие в горизонте оценки риска и уже ждущие продления (до удаления через 5 суток). Сумма max(0, стоимость этих услуг − доступные средства) по клиентам.",
   lostMonthly:
     "Месячная стоимость удалённых и заблокированных услуг у ушедших клиентов: цена × 30 / длина периода оплаты.",
   chart:
-    "Все линии считаются в услугах. Факт — услуги, перешедшие в deleted/blocked между загрузками снимков. Оценка даты — удалённые услуги, датированные окончанием + 5 суток. Прогноз — ожидаемое число потерянных услуг по дням окончания в ближайшие 30 дней (сумма вероятностей оттока). Вертикальная линия — момент оценки as_of.",
+    "Все линии считаются в услугах. Факт – услуги, перешедшие в deleted/blocked между загрузками снимков. Оценка даты – удалённые услуги, датированные окончанием + 5 суток. Прогноз – ожидаемое число потерянных услуг по дням окончания в ближайшие 30 дней (сумма вероятностей оттока). Вертикальная линия – момент оценки as_of.",
 };
 
 const levels: Level[] = ["high", "medium", "low", "churned", "no_data"];
@@ -447,7 +446,7 @@ function Sidebar({ login, logout }: { login: string; logout: () => void }) {
         <div className="sidebar-model">
           <span className="status-pulse" />
           <span>{t.modelActive}</span>
-          <b>v{summary.data?.modelVersion ?? "—"}</b>
+          <b>v{summary.data?.modelVersion ?? "–"}</b>
         </div>
         <div className="profile-row">
           <span className="avatar">{login[0]?.toUpperCase()}</span>
@@ -537,12 +536,12 @@ function Dashboard({ theme }: { theme: Theme }) {
       <PageTitle
         eyebrow={t.summary.toUpperCase()}
         title={t.overview}
-        detail={d ? `${t.snapshot}: ${d.asOf ? formatDate(d.asOf) : "—"} · v${d.modelVersion}` : t.loading}
+        detail={d ? `${t.snapshot}: ${d.asOf ? formatDate(d.asOf) : "–"} · v${d.modelVersion}` : t.loading}
         action={
           <div className="as-of-chip">
             <Activity size={15} />
             {t.snapshot}
-            <b>{d?.asOf ? new Date(d.asOf).toLocaleString("ru-RU") : "—"}</b>
+            <b>{d?.asOf ? new Date(d.asOf).toLocaleString("ru-RU") : "–"}</b>
           </div>
         }
       />
@@ -560,7 +559,7 @@ function Dashboard({ theme }: { theme: Theme }) {
                   {level === "high" ? "03" : level === "medium" ? "02" : level === "low" ? "01" : "↘"}
                 </span>
                 <div>
-                  <b>{d?.counts[level] ?? "—"}</b>
+                  <b>{d?.counts[level] ?? "–"}</b>
                   <span>{levelLabels[level]}</span>
                 </div>
                 <i />
@@ -642,11 +641,11 @@ function Dashboard({ theme }: { theme: Theme }) {
                   <p className="eyebrow">{t.model.toUpperCase()}</p>
                   <h2>{t.modelScore}</h2>
                 </div>
-                <span className="model-version">v{d?.modelVersion ?? "—"}</span>
+                <span className="model-version">v{d?.modelVersion ?? "–"}</span>
               </div>
               <div className="score-summary">
                 <span className="score-ring">
-                  <b>{d?.averageScore == null ? "—" : Math.round(d.averageScore)}</b>
+                  <b>{d?.averageScore == null ? "–" : Math.round(d.averageScore)}</b>
                   <small>AVG</small>
                 </span>
                 <div>
@@ -662,7 +661,7 @@ function Dashboard({ theme }: { theme: Theme }) {
               />
               <SummaryLine
                 label={t.updated}
-                value={d?.calculatedAt ? new Date(d.calculatedAt).toLocaleTimeString("ru-RU") : "—"}
+                value={d?.calculatedAt ? new Date(d.calculatedAt).toLocaleTimeString("ru-RU") : "–"}
               />
               <NavLink className="text-link" to="/customers">
                 {t.openCustomers}
@@ -704,7 +703,6 @@ function Metric({
   );
 }
 
-/** Question-mark button that reveals a formula on hover, focus or tap. */
 function Hint({
   text,
   label,
@@ -778,10 +776,6 @@ function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-/**
- * One row per calendar day. A series is 0 on days without events inside its own
- * date range, so lines drop to zero instead of being joined across gaps.
- */
 function buildChartRows(timeline: Timeline): ChartRow[] {
   const rows = new Map<string, ChartRow>();
   const ensure = (date: string) => {
@@ -839,7 +833,6 @@ function Chart({ timeline, theme }: { timeline?: Timeline; theme: Theme }) {
           dataKey="observed"
           stroke={colors.observed}
           strokeWidth={2.5}
-          // events are sparse (one point per loaded snapshot), so mark the days that have them
           dot={(props: { cx?: number; cy?: number; value?: number; index?: number }) =>
             props.value ? (
               <circle
@@ -929,7 +922,7 @@ function Customers() {
   }
   return (
     <>
-      <PageTitle eyebrow={t.customers.toUpperCase()} title={t.customers} detail={`${q.data?.total ?? "—"}`} />
+      <PageTitle eyebrow={t.customers.toUpperCase()} title={t.customers} detail={`${q.data?.total ?? "–"}`} />
       <section className="surface table-surface">
         <div className="table-toolbar">
           <label className="search-box">
@@ -1008,7 +1001,7 @@ function Customers() {
                   <td>
                     <span className={`level-badge ${c.level}`}>{levelLabels[c.level]}</span>
                   </td>
-                  <td className="reason-cell">{c.topReason ?? "—"}</td>
+                  <td className="reason-cell">{c.topReason ?? "–"}</td>
                 </tr>
               ))}
             </tbody>
@@ -1091,7 +1084,7 @@ function CustomerPanel({ id, close }: { id: number; close: () => void }) {
               {scoreText(d.score, d.level)}
               <span className={`level-badge ${d.level}`}>{levelLabels[d.level]}</span>
               <span className="loyalty">
-                {t.loyalty} {d.loyalty?.toFixed(0) ?? "—"}
+                {t.loyalty} {d.loyalty?.toFixed(0) ?? "–"}
               </span>
             </div>
             {specialStateText[d.level] && <p className="drawer-note">{specialStateText[d.level]}</p>}
@@ -1114,7 +1107,7 @@ function CustomerPanel({ id, close }: { id: number; close: () => void }) {
               </div>
             </div>
             <p className="drawer-note">
-              Стоимость — цена услуг за денежный горизонт. Ожидаемые потери — стоимость × вероятность
+              Стоимость – цена услуг за денежный горизонт. Ожидаемые потери – стоимость × вероятность
               оттока × (1 − защита балансом × покрытие).
             </p>
             {d.dataWarnings.length > 0 && (
@@ -1150,7 +1143,7 @@ function CustomerPanel({ id, close }: { id: number; close: () => void }) {
                 <div className="service-block" key={s.id}>
                   <div className="service-head">
                     <b>{s.name}</b>
-                    <span>{s.score === null ? "—" : `score ${s.score.toFixed(1)}`}</span>
+                    <span>{s.score === null ? "–" : `score ${s.score.toFixed(1)}`}</span>
                   </div>
                   <div className="service-sub">
                     <span className={`status-tag ${s.status}`}>{statusLabels[s.status] ?? s.status}</span>
@@ -1200,7 +1193,7 @@ function validateSettings(value: ModelSettings): string[] {
   if (!(value.churn_curve.k > 0) || value.churn_curve.k > 10) errors.push("k должен быть больше 0 и не больше 10");
   if (!inRange(value.churn_curve.midpoint, 0, 100)) errors.push("середина кривой должна быть от 0 до 100");
   if (!inRange(value.balance_shield, 0, 1)) errors.push("защита балансом должна быть от 0 до 1");
-  if (!inRange(value.suspended_value, 0, 1)) errors.push("значение для приостановленных услуг — от 0 до 1");
+  if (!inRange(value.suspended_value, 0, 1)) errors.push("значение для приостановленных услуг – от 0 до 1");
   if (value.as_of_mode === "fixed" && !value.as_of_fixed) errors.push("укажите дату для фиксированной точки отсчёта");
   return errors;
 }
@@ -1215,8 +1208,6 @@ function Model() {
   });
   const [value, setValue] = useState<ModelSettings | null>(null);
   const [state, setState] = useState(t.saved);
-  // Last settings the server confirmed. Local edits are compared against it, so a
-  // refetch (after our own save or an SSE event) never overwrites what is being typed.
   const synced = useRef<ModelSettings | null>(null);
   const latest = useRef<ModelSettings | null>(null);
   latest.current = value;
@@ -1244,7 +1235,6 @@ function Model() {
           body: JSON.stringify(sent),
         });
         synced.current = saved.settings;
-        // Adopt the server's normalised copy (e.g. timestamp format) unless the user kept typing.
         setValue((current) => (sameSettings(current, sent) ? saved.settings : current));
         client.setQueryData<ModelSettingsResponse>(["model-settings"], (old) =>
           old ? { ...old, settings: saved.settings, version: saved.version } : old,

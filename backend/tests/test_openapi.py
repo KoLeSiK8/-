@@ -4,7 +4,7 @@ import pytest
 
 yaml = pytest.importorskip("yaml")
 
-from app.main import create_app  # noqa: E402
+from app.main import create_app  
 
 OPENAPI_FILE = Path(__file__).resolve().parents[2] / "openapi.yml"
 

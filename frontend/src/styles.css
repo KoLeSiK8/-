@@ -368,7 +368,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .preset-row > span { flex-basis: 100%; }
 }
 
-/* Theme system: restrained navy surfaces with a clear blue accent. */
 .button-primary { color: #fff; background: #1d5f8a; border-color: #1d5f8a; }
 .button-primary:hover { background: #174e73; border-color: #174e73; filter: none; }
 .sidebar {
@@ -544,7 +543,6 @@ html[data-theme="dark"] .login-form label,
 html[data-theme="dark"] .field-label { color: #b9c9d9; }
 html[data-theme="dark"] .login-safe { color: #a0b3c7; }
 
-/* Readability pass: keep dense analytics usable at normal viewing distance. */
 body { font-size: 14px; }
 .nav-link { font-size: 14px; }
 .nav-caption, .eyebrow { font-size: 11px; }
@@ -609,7 +607,6 @@ body { font-size: 14px; }
   .service-sub, .feature-bar { font-size: 12px; }
 }
 
-/* Formula hints */
 .hint { position: relative; display: inline-flex; }
 .hint-trigger { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: help; }
 .hint-trigger:hover, .hint-trigger:focus-visible { background: var(--surface-soft); color: var(--ink-soft); outline: none; box-shadow: 0 0 0 2px #4cc6f155; }
@@ -619,7 +616,6 @@ body { font-size: 14px; }
 .hint-popover { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 20; width: min(300px, 80vw); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); box-shadow: 0 14px 32px #10203a24; font: 500 12px/1.5 var(--mono); text-align: left; white-space: normal; }
 .section-heading .hint-popover { top: calc(100% + 8px); bottom: auto; }
 
-/* Customer drawer details */
 .drawer-note { margin: 10px 0 0; color: var(--muted); font: 500 11px/1.5 var(--mono); }
 .drawer-stats { margin-top: 4px; }
 .service-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }

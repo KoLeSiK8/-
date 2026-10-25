@@ -1,10 +1,4 @@
-"""Load test of the API on generated data (see docs/architecture.md, "Масштабирование").
 
-WARNING: replaces all data in the database given by DATABASE_URL. Use a separate one:
-    createdb churn_bench
-    DATABASE_URL=postgresql+psycopg://churn:churn@localhost:5432/churn_bench \\
-        python tools/benchmark.py --accounts 10000 50000
-"""
 
 import argparse
 import os
@@ -18,12 +12,12 @@ sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT / "tools"))
 os.environ.setdefault("SEED_DATASET", "none")
 
-from fastapi.testclient import TestClient  # noqa: E402
-from generate_demo import generate_demo  # noqa: E402
+from fastapi.testclient import TestClient  
+from generate_demo import generate_demo  
 
-from app.config import settings  # noqa: E402
-from app.db import engine  # noqa: E402
-from app.main import create_app  # noqa: E402
+from app.config import settings  
+from app.db import engine  
+from app.main import create_app  
 
 READS = {
     "summary": "/api/v1/analytics/summary",

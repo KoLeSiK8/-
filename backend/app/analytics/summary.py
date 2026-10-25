@@ -6,12 +6,7 @@ LEVELS = ("low", "medium", "high", "churned", "no_data")
 
 
 def build_summary(engine: Engine) -> dict[str, Any]:
-    """Dashboard totals, read from the stored result of the last recompute.
 
-    The same function feeds /api/v1/analytics/summary, /metrics and the UI, and it
-    never recalculates: app.customer_scores and app.score_summary are written
-    together by ``recompute()``, so the numbers always match the customer table.
-    """
     with engine.connect() as connection:
         level_rows = connection.exec_driver_sql(
             """

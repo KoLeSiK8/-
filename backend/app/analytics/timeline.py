@@ -11,14 +11,7 @@ FORECAST_DAYS = 30
 
 
 def build_timeline(engine: Engine) -> dict:
-    """Daily churn chart in one unit: number of services.
 
-    * observed  - services that moved to deleted/blocked between snapshots;
-    * estimated - deleted services, dated expiresAt + 5 days (the platform rule);
-    * forecast  - expected number of services lost on each day of the next 30 days,
-                  i.e. the sum of P(churn | service score) by expiresAt.
-    Scores and as_of come from the stored recompute result, not a fresh calculation.
-    """
     settings, _ = load_settings(engine)
     observed: dict[date, float] = defaultdict(float)
     estimated: dict[date, float] = defaultdict(float)

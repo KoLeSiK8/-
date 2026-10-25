@@ -33,5 +33,5 @@ def register_feature(feature: type[Feature]) -> type[Feature]:
 
 
 def load_features() -> None:
-    """Import app.scoring.features, which registers every feature module in it."""
-    from . import features  # noqa: F401
+
+    from . import features  

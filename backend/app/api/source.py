@@ -35,7 +35,7 @@ def put_snapshot(snapshot: SnapshotInput, request: Request) -> dict[str, int]:
 def load_preset(
     name: Literal["official", "demo", "demo-step2"], request: Request
 ) -> dict[str, int]:
-    """Load a bundled dataset from data/<name>.json."""
+
     path = dataset_path(name)
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"Dataset {name} is not bundled")

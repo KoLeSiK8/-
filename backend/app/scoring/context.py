@@ -15,7 +15,7 @@ LIVE_STATUSES = {"active", "suspended", "prolong_wait"}
 
 
 def format_number(value: float, digits: int = 1) -> str:
-    """Format a number the Russian way: comma as decimal separator, non-breaking spaces between thousands."""
+
     text = f"{value:,.{digits}f}"
     return text.replace(",", "\u00a0").replace(".", ",")
 

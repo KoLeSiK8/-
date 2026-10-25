@@ -45,7 +45,6 @@ export interface TimelineSeries {
 export interface Timeline {
   asOf: string;
   asOfDate: string;
-  /** All three series are counted in services. */
   unit: "services";
   series: TimelineSeries[];
 }
@@ -119,7 +118,6 @@ export class ApiError extends Error {
 
 type ValidationItem = { loc?: Array<string | number>; msg?: string };
 
-/** FastAPI returns `detail` either as a string or as a list of validation errors. */
 export function describeError(detail: unknown, fallback: string): string {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
@@ -188,7 +186,6 @@ export const termLabels: Record<string, string> = {
   year: "год",
 };
 
-/** ISO timestamp -> value for <input type="datetime-local"> in the viewer's local time. */
 export function toLocalInput(iso: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
